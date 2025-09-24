@@ -1,19 +1,13 @@
 {
-  "version": 2,
-  "runtime": "nodejs20.x",
-  "regions": ["iad1"],
   "functions": {
     "pages/api/upload.ts": {
-      "maxDuration": 60,
-      "memory": 2048
+      "maxDuration": 60
     },
     "pages/api/chat.ts": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     },
     "pages/api/csrf.ts": {
-      "maxDuration": 10,
-      "memory": 512
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -67,9 +61,5 @@
         }
       ]
     }
-  ],
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm ci",
-  "framework": "nextjs"
+  ]
 }
