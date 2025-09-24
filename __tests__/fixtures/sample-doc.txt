@@ -1,0 +1,22 @@
+Introduction to RAG Systems
+
+Retrieval-Augmented Generation (RAG) is an AI framework that combines the power of large language models with external knowledge retrieval. This approach addresses key limitations of traditional LLMs by providing them with access to up-to-date and domain-specific information.
+
+How RAG Works:
+1. Document Ingestion: Text documents are processed and split into manageable chunks
+2. Embedding Generation: Each chunk is converted into a numerical vector representation
+3. Vector Storage: Embeddings are stored in a vector database for efficient retrieval
+4. Query Processing: User questions are converted to embeddings for similarity search
+5. Context Retrieval: Relevant document chunks are retrieved based on similarity
+6. Answer Generation: The LLM generates responses using retrieved context
+
+Benefits of RAG:
+- Reduces hallucinations by grounding responses in actual documents
+- Provides source attribution for generated answers
+- Enables domain-specific knowledge without fine-tuning
+- Keeps information up-to-date without model retraining
+
+Applications:
+RAG systems are widely used in customer support, documentation Q&A, research assistance, and educational tools. They excel in scenarios requiring accurate, source-based responses.
+
+This test document demonstrates the key concepts and can be used to verify the RAG implementation is working correctly with real APIs.

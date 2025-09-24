@@ -1,0 +1,106 @@
+# Erstelle eine technische Spezifikation für den fokussierten Lernbuddy
+lernbuddy_spec = {
+    "Projekt_Name": "Lernbuddy RAG System",
+    "Kern_Features": {
+        "2_Panel_Layout": {
+            "Links": "Dokumenten-Viewer/Editor für PDFs, DOCX, TXT, MD",
+            "Rechts": "Chat-Interface mit LLM-Auswahl",
+            "Split": "50/50 Aufteilung für optimale Nutzung"
+        },
+        "LLM_Integration": {
+            "Modelle": ["GPT-4", "Claude 3.5", "Gemini Pro", "Llama 2"],
+            "Auswahl": "Dropdown für schnellen Wechsel zwischen Modellen",
+            "Kontext": "Direkter Zugriff auf aktives Dokument"
+        },
+        "RAG_System": {
+            "Semantische_Suche": "Intelligente Suche in Dokumenteninhalten",
+            "Kontext_Awareness": "Antworten basieren auf relevantem Dokumentkontext",
+            "Text_Highlighting": "Relevante Passagen werden hervorgehoben",
+            "Chunk_Based": "Dokumente werden in sinnvolle Abschnitte unterteilt"
+        },
+        "Lern_Optimierung": {
+            "Text_Selection": "Nutzer kann Text markieren für spezifische Fragen",
+            "Quick_Actions": "Vorgeschlagene Aktionen wie 'Erklären', 'Zusammenfassen'",
+            "Stichpunkt_Antworten": "Strukturierte, lernfreundliche Antworten",
+            "Kontext_Referenzen": "Antworten zeigen relevante Dokumentstellen"
+        }
+    },
+    "User_Experience": {
+        "Fokus": "Minimalistisch und ablenkungsfrei",
+        "Interaktion": "Text markieren → Rechtsklick → 'Erklären'",
+        "Workflow": "Upload → Lesen → Fragen → Lernen",
+        "Design": "Clean, akademisch, professionell"
+    }
+}
+
+# Vergleich mit ursprünglichem Otio-Prototyp
+comparison = {
+    "Ursprünglicher_Prototyp": {
+        "Features": "Vollständiges Dashboard, Projektmanagement, Workflows",
+        "Komplexität": "Hoch - viele Features und Menüs",
+        "Zielgruppe": "Professionelle Forscher und Analysten",
+        "Interface": "Multi-Panel mit Navigation"
+    },
+    "Fokussierter_Lernbuddy": {
+        "Features": "2-Panel Interface, RAG Chat, Dokumenten-Viewer",
+        "Komplexität": "Niedrig - fokussiert auf Kern-Funktionalität", 
+        "Zielgruppe": "Studenten und Lernende",
+        "Interface": "Einfaches Split-Screen Design"
+    },
+    "Vorteil_des_Focus": [
+        "Weniger Ablenkung beim Lernen",
+        "Schnellerer Einstieg ohne Setup",
+        "Direkte Interaktion mit Inhalten",
+        "Optimiert für Verständnis, nicht für Produktivität"
+    ]
+}
+
+print("=== FOKUSSIERTER LERNBUDDY ERSTELLT ===")
+print(f"Core Features: {len(lernbuddy_spec['Kern_Features'])}")
+print(f"LLM Modelle: {len(lernbuddy_spec['Kern_Features']['LLM_Integration']['Modelle'])}")
+print(f"Design-Fokus: {lernbuddy_spec['User_Experience']['Fokus']}")
+
+print("\n=== UNTERSCHIED ZUM URSPRÜNGLICHEN PROTOTYP ===")
+print("Ursprünglich: Vollständige Produktivitäts-Suite")
+print("Jetzt: Fokussierter Lern-Assistant")
+print(f"Vorteile: {len(comparison['Vorteil_des_Focus'])} Hauptvorteile")
+
+# Implementierungsempfehlungen für echtes RAG System
+real_rag_implementation = {
+    "Vector_Database": {
+        "Empfehlung": "Pinecone, Weaviate oder Chroma",
+        "Zweck": "Semantische Suche in Dokumenteninhalten",
+        "Setup": "Dokumente in Embeddings umwandeln und indexieren"
+    },
+    "Embedding_Model": {
+        "Empfehlung": "OpenAI text-embedding-ada-002 oder Sentence-BERT",
+        "Zweck": "Text in Vektoren umwandeln für semantische Ähnlichkeit",
+        "Sprache": "Deutsche und englische Embeddings unterstützen"
+    },
+    "LLM_APIs": {
+        "OpenAI": "GPT-4 für beste Qualität",
+        "Anthropic": "Claude für lange Dokumente", 
+        "Google": "Gemini für technische Inhalte",
+        "Local": "Llama über Ollama für Privatsphäre"
+    },
+    "Document_Processing": {
+        "PDFs": "PyPDF2 oder pdfplumber für Textextraktion",
+        "DOCX": "python-docx für Word-Dokumente",
+        "Chunking": "Langchain TextSplitter für optimale Chunk-Größe",
+        "Preprocessing": "Textbereinigung und Strukturerkennung"
+    }
+}
+
+import json
+with open('lernbuddy_specification.json', 'w', encoding='utf-8') as f:
+    json.dump({
+        "lernbuddy_spec": lernbuddy_spec,
+        "comparison": comparison, 
+        "rag_implementation": real_rag_implementation
+    }, f, ensure_ascii=False, indent=2)
+
+print("\n=== ECHTES RAG SYSTEM IMPLEMENTIERUNG ===")
+print("Vector DB: Pinecone/Weaviate für semantische Suche")
+print("Embeddings: OpenAI/Sentence-BERT für deutsche Texte")  
+print("LLM APIs: GPT-4, Claude, Gemini, lokales Llama")
+print("Document Processing: PyPDF2, python-docx, Langchain")

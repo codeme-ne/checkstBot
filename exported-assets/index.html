@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lernbuddy - Intelligenter Dokumenten-Assistent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div class="app-container">
+        <!-- Left Panel - Document Viewer -->
+        <div class="document-panel">
+            <!-- Document Panel Header -->
+            <div class="panel-header">
+                <h1>Dokumente</h1>
+                <div class="document-actions">
+                    <button class="btn btn--outline btn--sm" onclick="document.getElementById('file-input').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        Hochladen
+                    </button>
+                    <input type="text" class="form-control search-input" placeholder="Im Dokument suchen..." id="document-search">
+                </div>
+            </div>
+
+            <!-- File Upload Area (when no document) -->
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-content">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14,2 14,8 20,8"></polyline>
+                        <line x1="12" y1="18" x2="12" y2="12"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <h3>Dokument zum Lernen hochladen</h3>
+                    <p>Unterstützte Formate: PDF, DOCX, TXT, MD</p>
+                    <button class="btn btn--primary" onclick="document.getElementById('file-input').click()">
+                        Datei auswählen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Document Tabs -->
+            <div class="document-tabs" id="document-tabs" style="display: none;">
+                <!-- Tabs will be populated by JavaScript -->
+            </div>
+
+            <!-- Document Viewer -->
+            <div class="document-viewer" id="document-viewer" style="display: none;">
+                <div class="document-header">
+                    <h2 id="document-title">Dokument Titel</h2>
+                    <div class="document-tools">
+                        <button class="btn btn--outline btn--sm" onclick="toggleHighlightMode()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                            Markieren
+                        </button>
+                        <button class="btn btn--outline btn--sm" onclick="explainSelected()" id="explain-btn" disabled>
+                            Erklären
+                        </button>
+                    </div>
+                </div>
+                <div class="document-content" id="document-content">
+                    <!-- Document content will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Hidden file input -->
+            <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md" style="display: none;" multiple>
+        </div>
+
+        <!-- Right Panel - Chat Interface -->
+        <div class="chat-panel">
+            <!-- Chat Panel Header -->
+            <div class="panel-header">
+                <h1>Lernassistent</h1>
+                <div class="llm-selector">
+                    <select class="form-control" id="llm-select">
+                        <option value="gpt4">GPT-4 - Vielseitig, komplexe Erklärungen</option>
+                        <option value="claude">Claude 3.5 - Detaillierte Analysen</option>
+                        <option value="gemini">Gemini Pro - Technische Themen</option>
+                        <option value="llama">Llama 2 - Schnelle Antworten</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chat Status -->
+            <div class="chat-status" id="chat-status">
+                <div class="status-content">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <h3>Bereit zum Lernen!</h3>
+                    <p>Laden Sie ein Dokument hoch, um mit dem intelligenten Lernen zu beginnen.</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions" id="quick-actions" style="display: none;">
+                <h3>Schnellaktionen</h3>
+                <div class="action-buttons">
+                    <button class="quick-action-btn" onclick="askQuickQuestion('Erstelle eine Zusammenfassung')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                        </svg>
+                        Zusammenfassung
+                    </button>
+                    <button class="quick-action-btn" onclick="askQuickQuestion('Extrahiere die Hauptpunkte')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12,6 12,12 16,14"></polyline>
+                        </svg>
+                        Hauptpunkte
+                    </button>
+                    <button class="quick-action-btn" onclick="askQuickQuestion('Generiere Verständnisfragen')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9 9h6v6h-6z"></path>
+                        </svg>
+                        Quiz Fragen
+                    </button>
+                    <button class="quick-action-btn" onclick="askQuickQuestion('Erkläre komplexe Konzepte einfacher')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <circle cx="12" cy="17" r="1"></circle>
+                        </svg>
+                        Vereinfachen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chat-messages" style="display: none;">
+                <!-- Chat messages will be rendered here -->
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container" id="chat-input-container" style="display: none;">
+                <div class="chat-input">
+                    <input type="text" class="form-control" placeholder="Stellen Sie Ihre Frage zum Dokument..." id="chat-input">
+                    <button class="btn btn--primary" onclick="sendMessage()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Highlight tooltip -->
+    <div class="highlight-tooltip" id="highlight-tooltip" style="display: none;">
+        <button onclick="explainSelection()" class="tooltip-btn">Erklären</button>
+        <button onclick="clearSelection()" class="tooltip-btn">Abbrechen</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
