@@ -7,13 +7,29 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+        canvas: false,
       };
     }
-    
+
+    // Handle PDF.js worker
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    };
+
     return config;
   },
-  // Enable source maps in development
+  // Production optimizations
   productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+  compress: true,
+
+  // Handle PDF.js compatibility
+  experimental: {
+    esmExternals: 'loose',
+  },
+
+  // Headers now consolidated in vercel.json for deployment consistency
 }
 
 module.exports = nextConfig

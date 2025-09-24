@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import PDFViewer from './PDFViewer';
+import dynamic from 'next/dynamic';
 import MarkdownViewer from './MarkdownViewer';
 import TextViewer from './TextViewer';
 import SelectionTooltip from './SelectionTooltip';
+
+// Dynamically import PDFViewer to avoid SSR issues
+const PDFViewer = dynamic(() => import('./PDFViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center p-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-gray-500">PDF wird geladen...</p>
+      </div>
+    </div>
+  )
+});
 
 interface Document {
   id: string;

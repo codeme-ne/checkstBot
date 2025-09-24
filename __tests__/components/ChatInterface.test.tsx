@@ -3,12 +3,41 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChatInterface from '../../components/ChatInterface';
 
+// Mock MessageBubble to avoid react-markdown issues in tests
+jest.mock('../../components/MessageBubble', () => {
+  return function MockMessageBubble({ role, content, timestamp }: any) {
+    return (
+      <div data-testid={`message-${role}`}>
+        <span>{role === 'user' ? '👤 You' : '🤖 Assistant'}</span>
+        <div>{content}</div>
+        {timestamp && <time>{new Date(timestamp).toLocaleTimeString()}</time>}
+      </div>
+    );
+  };
+});
+
+// Mock the CSRF module
+jest.mock('../../lib/csrf-client', () => ({
+  fetchCSRFToken: jest.fn().mockResolvedValue('mock-csrf-token'),
+  getCSRFTokenFromCookie: jest.fn().mockReturnValue('mock-csrf-token')
+}));
+
 describe('ChatInterface', () => {
+  beforeEach(() => {
+    // Clear localStorage and mock DOM methods
+    localStorage.clear();
+    Element.prototype.scrollIntoView = jest.fn();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it('renders chat interface with input and send button', () => {
     render(<ChatInterface documentId="test-doc" />);
 
-    expect(screen.getByPlaceholderText(/Stellen Sie Ihre Frage/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Stellen Sie eine Frage zu Ihrem Dokument/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /nachricht senden/i })).toBeInTheDocument();
   });
 
   it('displays initial assistant message', () => {

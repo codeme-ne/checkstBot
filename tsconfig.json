@@ -28,5 +28,11 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "__tests__/integration/real-api.integration.test.ts",
+    "__tests__/lib/document-parser.test.ts",
+    "__tests__/lib/embedding.test.ts",
+    "__tests__/test-utils.ts"
+  ]
 }

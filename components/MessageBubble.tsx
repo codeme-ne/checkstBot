@@ -43,11 +43,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ node, inline, className, children, ...props }) {
+              code({ className, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || '');
                 const codeContent = String(children).replace(/\n$/, '');
+                const isInline = !match;
 
-                return !inline && match ? (
+                return !isInline && match ? (
                   <div className="code-block-wrapper">
                     <div className="code-block-header">
                       <span className="code-language">{match[1]}</span>
@@ -60,10 +61,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
                       </button>
                     </div>
                     <SyntaxHighlighter
-                      style={vscDarkPlus}
+                      style={vscDarkPlus as any}
                       language={match[1]}
                       PreTag="div"
-                      {...props}
                     >
                       {codeContent}
                     </SyntaxHighlighter>

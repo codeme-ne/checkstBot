@@ -133,9 +133,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onClose }) =>
               <div className="sample-questions">
                 <h4>Beispielfragen:</h4>
                 <ul>
-                  <li>"Was sind die Hauptthemen in diesem Dokument?"</li>
-                  <li>"Fasse die wichtigsten Punkte zusammen"</li>
-                  <li>"Erkläre mir [spezifisches Thema] aus dem Dokument"</li>
+                  <li>&quot;Was sind die Hauptthemen in diesem Dokument?&quot;</li>
+                  <li>&quot;Fasse die wichtigsten Punkte zusammen&quot;</li>
+                  <li>&quot;Erkläre mir [spezifisches Thema] aus dem Dokument&quot;</li>
                 </ul>
               </div>
             </div>

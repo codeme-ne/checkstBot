@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import MessageBubble from './MessageBubble';
 import { fetchCSRFToken, getCSRFTokenFromCookie } from '../lib/csrf-client';
+import { ChatStorageService } from '../lib/chat-storage';
 
 // Generate unique IDs to prevent collision risk
 const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -32,15 +33,31 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
   queuedUserMessage,
   onQueueConsumed
 }, ref) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome-message',
-      role: 'assistant',
-      content: '👋 Hallo! Ich bin Ihr intelligenter Lernassistent. Stellen Sie mir gerne Fragen zu Ihrem Dokument!',
-      timestamp: new Date().toISOString(),
-      model: CHAT_MODEL
+  // Initialize storage service
+  const [chatStorage] = useState(() => new ChatStorageService());
+
+  // Create welcome message
+  const createWelcomeMessage = useCallback((): Message => ({
+    id: 'welcome-message',
+    role: 'assistant',
+    content: '👋 Hallo! Ich bin Ihr intelligenter Lernassistent. Stellen Sie mir gerne Fragen zu Ihrem Dokument!',
+    timestamp: new Date().toISOString(),
+    model: CHAT_MODEL
+  }), []);
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Load messages from storage for this document
+    const storedMessages = chatStorage.getMessages(documentId);
+
+    // If no stored messages, start with welcome message
+    if (storedMessages.length === 0) {
+      const welcomeMessage = createWelcomeMessage();
+      chatStorage.saveMessages(documentId, [welcomeMessage]);
+      return [welcomeMessage];
     }
-  ]);
+
+    return storedMessages;
+  });
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [csrfToken, setCsrfToken] = useState<string>('');
@@ -53,6 +70,21 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
       setCsrfToken(token);
     });
   }, []);
+
+  // Load messages when documentId changes
+  useEffect(() => {
+    const storedMessages = chatStorage.getMessages(documentId);
+
+    if (storedMessages.length === 0) {
+      // New document - create welcome message
+      const welcomeMessage = createWelcomeMessage();
+      chatStorage.saveMessages(documentId, [welcomeMessage]);
+      setMessages([welcomeMessage]);
+    } else {
+      // Load existing conversation
+      setMessages(storedMessages);
+    }
+  }, [documentId, chatStorage, createWelcomeMessage]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -82,6 +114,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
     let updatedMessages: Message[];
     setMessages(prevMessages => {
       updatedMessages = [...prevMessages, userMessage];
+      // Save user message to storage immediately
+      chatStorage.saveMessages(documentId, updatedMessages);
       return updatedMessages;
     });
     setIsLoading(true);
@@ -114,7 +148,12 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         model: CHAT_MODEL
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        const newMessages = [...prev, aiMessage];
+        // Save AI response to storage
+        chatStorage.saveMessages(documentId, newMessages);
+        return newMessages;
+      });
     } catch (error) {
       let errorContent = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
 
@@ -133,11 +172,16 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         timestamp: new Date().toISOString(),
         model: CHAT_MODEL
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => {
+        const newMessages = [...prev, errorMessage];
+        // Save error message to storage
+        chatStorage.saveMessages(documentId, newMessages);
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, csrfToken, documentId]); // Removed 'messages' from dependencies
+  }, [isLoading, csrfToken, documentId, chatStorage]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
