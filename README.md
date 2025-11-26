@@ -1,179 +1,203 @@
-# checkstBot - RAG-Powered Learning Assistant
+# checkstBot
 
-A sophisticated research learning assistant that combines document processing with conversational AI to help students and researchers interact with their materials more effectively.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue.svg)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![Tests](https://img.shields.io/badge/Tests-53%20passing-brightgreen.svg)](#testing)
 
-## 🎯 Features
+A production-ready RAG-powered learning assistant that combines document processing with conversational AI to help students and researchers interact with their materials more effectively.
+
+## Features
 
 - **Smart Document Processing**: Upload and process PDFs, DOCX, TXT, and Markdown files
-- **RAG System**: Retrieval-Augmented Generation for contextual responses
-- **Multi-LLM Support**: Choose between GPT-4, Claude 3.5, Gemini, and Llama
-- **Semantic Search**: Find relevant information using vector embeddings
-- **Learning-Optimized**: Structured responses perfect for academic work
-- **Text Highlighting**: Select text for specific explanations
-- **2-Panel Interface**: Clean document viewer + chat interface
+- **RAG System**: Retrieval-Augmented Generation with configurable relevance thresholds
+- **Semantic Search**: OpenAI embeddings with Pinecone vector database
+- **Text Selection**: Highlight text for contextual explanations
+- **Chat Persistence**: Document-scoped conversation history with offline support
+- **Production Security**: CSRF protection, rate limiting, security headers
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
+
+- Node.js 20+
 - OpenAI API key
-- Pinecone API key
+- Pinecone API key and index
 
 ### Installation
 
-1. **Clone the repository**
 ```bash
+# Clone the repository
 git clone https://github.com/codeme-ne/checkstBot.git
 cd checkstBot
-```
 
-2. **Install dependencies**
-```bash
+# Install dependencies
 npm install
-```
 
-3. **Environment setup**
-```bash
+# Set up environment variables
 cp .env.example .env.local
 # Edit .env.local with your API keys
-```
 
-4. **Run the development server**
-```bash
+# Run the development server
 npm run dev
 ```
 
-5. **Open your browser**
-Navigate to `http://localhost:3000`
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 🛠️ Configuration
-
-### Required API Keys
-
-- **OpenAI API Key**: For embeddings and chat completions
-- **Pinecone API Key**: For vector database operations
-- **Pinecone Environment**: Your Pinecone environment name
-- **Pinecone Index**: Your Pinecone index name
+## Configuration
 
 ### Environment Variables
 
 ```env
 OPENAI_API_KEY=sk-your-openai-key-here
 PINECONE_API_KEY=your-pinecone-key-here
-PINECONE_ENVIRONMENT=your-pinecone-environment
 PINECONE_INDEX=your-pinecone-index-name
 ```
 
-## 📁 Project Structure
+See [`.env.example`](.env.example) for all available options.
+
+## Architecture
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 14 (Pages Router) |
+| Language | TypeScript (strict mode) |
+| Styling | Tailwind CSS |
+| Embeddings | OpenAI text-embedding-ada-002 |
+| Vector DB | Pinecone |
+| LLM | OpenAI GPT-4 |
+
+### Project Structure
 
 ```
 checkstBot/
-├── components/
-│   ├── DocumentViewer.tsx    # Document display component
-│   ├── ChatInterface.tsx     # Chat interface component
-│   └── FileUpload.tsx        # File upload component
-├── lib/
-│   ├── embedding.ts          # OpenAI embeddings integration
-│   ├── rag.ts               # RAG system implementation
-│   ├── vector-db.ts         # Pinecone vector database
-│   └── document-parser.ts   # Document processing utilities
-├── pages/
+├── components/           # React components (11 specialized)
+│   ├── ChatInterface.tsx       # Chat UI with persistence
+│   ├── EnhancedDocumentViewer.tsx  # Smart document factory
+│   ├── PDFViewer.tsx           # PDF rendering
+│   ├── MarkdownViewer.tsx      # Markdown display
+│   ├── TextViewer.tsx          # Plain text display
+│   ├── MessageBubble.tsx       # Chat message rendering
+│   ├── FileUpload.tsx          # Drag-and-drop upload
+│   ├── SelectionTooltip.tsx    # Text selection actions
+│   └── ...
+├── lib/                  # Core services
+│   ├── rag.ts                  # RAG pipeline orchestration
+│   ├── embedding.ts            # OpenAI embeddings
+│   ├── vector-db.ts            # Pinecone operations
+│   ├── document-parser.ts      # File parsing
+│   ├── csrf.ts                 # CSRF protection
+│   └── rate-limit.ts           # Request throttling
+├── pages/                # Next.js pages (Pages Router)
 │   ├── api/
-│   │   ├── upload.ts        # File upload endpoint
-│   │   ├── chat.ts          # Chat completion endpoint
-│   │   └── search.ts        # Semantic search endpoint
-│   └── index.tsx            # Main application page
-├── styles/                  # Tailwind CSS styles
-├── public/                  # Static assets
-└── types/                   # TypeScript type definitions
+│   │   ├── upload.ts           # Document upload endpoint
+│   │   ├── chat.ts             # Chat completion endpoint
+│   │   └── csrf.ts             # CSRF token endpoint
+│   └── index.tsx               # Main application
+├── __tests__/            # Test suite (53 tests)
+└── styles/               # Tailwind styles
 ```
 
-## 💡 Usage
+### RAG Pipeline
 
-1. **Upload Documents**: Drag and drop or select PDF, DOCX, TXT, or MD files
-2. **Wait for Processing**: Documents are chunked and embedded automatically
-3. **Start Chatting**: Ask questions about your documents
-4. **Select Text**: Highlight text for specific explanations
-5. **Choose LLM**: Switch between different AI models as needed
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Upload    │───>│   Parse &   │───>│  Generate   │
+│  Document   │    │   Chunk     │    │ Embeddings  │
+└─────────────┘    └─────────────┘    └─────────────┘
+                                             │
+                                             v
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Return    │<───│   LLM with  │<───│   Store in  │
+│  Response   │    │   Context   │    │  Pinecone   │
+└─────────────┘    └─────────────┘    └─────────────┘
+                          ^
+                          │
+┌─────────────┐    ┌─────────────┐
+│    User     │───>│  Semantic   │
+│   Query     │    │   Search    │
+└─────────────┘    └─────────────┘
+```
 
-## 🔧 Development
-
-### Tech Stack
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **AI**: OpenAI GPT-4 & Embeddings
-- **Vector DB**: Pinecone
-- **File Processing**: pdf-parse, mammoth
+## Development
 
 ### Available Scripts
+
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run type-check   # Run TypeScript checks
+npm run test         # Run test suite
+npm run test -- --watch  # TDD mode
 ```
 
-## 🎓 Educational Use Cases
+### Testing
 
-- **Literature Review**: Upload research papers and ask comparative questions
-- **Study Sessions**: Upload textbooks and get chapter summaries
-- **Essay Writing**: Get contextual information from your sources
-- **Exam Preparation**: Create study guides from course materials
-- **Research Analysis**: Extract key insights from academic documents
+This project follows **Test-Driven Development (TDD)**. See [CONTRIBUTING.md](CONTRIBUTING.md) for the TDD workflow.
 
-## 📊 RAG Pipeline
+```bash
+# Run all tests
+npm run test
 
-1. **Document Ingestion** → Upload & Parse → Text Extraction
-2. **Text Chunking** → Intelligent Segmentation → Overlap Management
-3. **Embedding Generation** → OpenAI text-embedding-ada-002 → Vector Creation
-4. **Vector Storage** → Pinecone Database → Metadata Indexing
-5. **Query Processing** → User Question → Embedding → Similarity Search
-6. **Context Retrieval** → Top-K Chunks → Relevance Scoring
-7. **Response Generation** → LLM + Context → Structured Answer
+# Run with coverage
+npm run test -- --coverage
 
-## 🚀 Deployment
+# Watch mode for TDD
+npm run test -- --watch
+```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for:
+- Vulnerability reporting process
+- Security features implemented
+- AI/RAG-specific security considerations
+- Best practices for deployers
+
+## Deployment
 
 ### Vercel (Recommended)
+
 1. Push to GitHub
 2. Connect to Vercel
-3. Add environment variables
-4. Deploy automatically
+3. Add environment variables in Vercel dashboard
+4. Deploy
 
-### Docker
+### Pre-deployment Validation
+
 ```bash
-docker build -t checkstbot .
-docker run -p 3000:3000 checkstbot
+node scripts/pre-deploy-check.js
 ```
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- TDD workflow
+- Pull request guidelines
+- Code style requirements
 
-## 📄 License
+## License
 
-MIT License - see LICENSE file for details
+[MIT](LICENSE) - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Links
 
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 - [Pinecone Documentation](https://docs.pinecone.io/)
 - [Next.js Documentation](https://nextjs.org/docs)
 
-## 🆘 Support
+## Support
 
-If you encounter any issues:
-1. Check the GitHub Issues page
-2. Review the environment variable setup
-3. Ensure all API keys are valid
-4. Check the console for error messages
+- [Report a Bug](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Request a Feature](.github/ISSUE_TEMPLATE/feature_request.md)
+- [Security Issues](SECURITY.md)
 
 ---
 
-Built with ❤️ for enhanced learning and research
+Built for enhanced learning and research.

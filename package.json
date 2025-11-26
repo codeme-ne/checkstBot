@@ -1,7 +1,32 @@
 {
   "name": "checkstbot",
   "version": "0.1.0",
-  "private": true,
+  "description": "RAG-powered learning assistant with document processing and conversational AI",
+  "keywords": [
+    "rag",
+    "retrieval-augmented-generation",
+    "ai",
+    "learning-assistant",
+    "document-processing",
+    "openai",
+    "pinecone",
+    "nextjs",
+    "typescript"
+  ],
+  "homepage": "https://github.com/codeme-ne/checkstBot#readme",
+  "bugs": {
+    "url": "https://github.com/codeme-ne/checkstBot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codeme-ne/checkstBot.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Lukas Zangerl",
+    "email": "lukas@zangerlcoachingdynamics.com",
+    "url": "https://github.com/codeme-ne"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
