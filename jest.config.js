@@ -5,7 +5,7 @@ const createJestConfig = nextJest({
 });
 
 const customJestConfig = {
-  setupFiles: ['<rootDir>/jest.setup.test.js'],
+  setupFiles: ['<rootDir>/jest.env.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: [
@@ -18,9 +18,11 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/pages/(.*)$': '<rootDir>/pages/$1',
+    '^react-markdown$': '<rootDir>/__mocks__/react-markdown.tsx',
+    '^remark-gfm$': '<rootDir>/__mocks__/remark-gfm.ts',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-markdown|remark-gfm|rehype-.*|hast-.*|unist-.*|unified|bail|is-plain-obj|trough|vfile|markdown-table|mdast-.*|micromark.*|parse-entities|character-entities|property-information|comma-separated-tokens|space-separated-tokens|ccount|escape-string-regexp|decode-named-character-reference)/)',
+    'node_modules/(?!(react-markdown|remark-.*|rehype-.*|hast-.*|unist-.*|unified|bail|is-plain-obj|trough|vfile.*|markdown-table|mdast-.*|micromark.*|parse-entities|character-entities.*|property-information|comma-separated-tokens|space-separated-tokens|ccount|escape-string-regexp|decode-named-character-reference|devlop|estree-util-.*|trim-lines|zwitch|html-url-attributes)/)',
   ],
 };
 

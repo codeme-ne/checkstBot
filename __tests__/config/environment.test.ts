@@ -20,7 +20,8 @@ describe('Environment Configuration', () => {
 
     it('should have valid OpenAI API key format', () => {
       const apiKey = process.env.OPENAI_API_KEY;
-      expect(apiKey).toMatch(/^sk-[A-Za-z0-9]{48,}$/);
+      // Support both old format (sk-xxx) and new project format (sk-proj-xxx)
+      expect(apiKey).toMatch(/^sk-(proj-)?[A-Za-z0-9_-]{20,}$/);
     });
 
     it('should have PINECONE_API_KEY defined', () => {

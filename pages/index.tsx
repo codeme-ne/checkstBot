@@ -1,6 +1,6 @@
 
 import type { NextPage } from 'next';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import ChatInterface, { ChatInterfaceHandle } from '../components/ChatInterface';
@@ -35,13 +35,14 @@ const Home: NextPage = () => {
       if (savedDocs) {
         const parsedDocs = JSON.parse(savedDocs);
         setDocuments(parsedDocs);
-        if (parsedDocs.length > 0 && !activeDocument) {
-          setActiveDocument(parsedDocs[0].id);
+        if (parsedDocs.length > 0) {
+          setActiveDocument((current) => current ?? parsedDocs[0].id);
         }
       }
     } catch (error) {
       console.error('Failed to load documents from storage', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle explanation requests from document viewer

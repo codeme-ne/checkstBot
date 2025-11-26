@@ -35,7 +35,28 @@ async function chatHandler(
     return;
   }
 
+  // Validate chatHistory if provided
+  if (chatHistory !== undefined && !Array.isArray(chatHistory)) {
+    res.status(400).json({ error: 'chatHistory must be an array' });
+    return;
+  }
+
+  // Validate documentId if provided
+  if (documentId !== undefined && typeof documentId !== 'string') {
+    res.status(400).json({ error: 'documentId must be a string' });
+    return;
+  }
+
   try {
+    // Check if documents are available before processing query
+    const hasDocuments = await ragSystem.hasDocuments();
+    if (!hasDocuments) {
+      res.status(400).json({
+        error: 'Bitte laden Sie zuerst ein Dokument hoch, bevor Sie Fragen stellen.'
+      });
+      return;
+    }
+
     // Pass documentId to the RAG system for context-aware responses
     const ragResponse = await ragSystem.query(message, chatHistory || [], documentId);
     res.status(200).json({ response: ragResponse.answer });

@@ -155,13 +155,18 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         return newMessages;
       });
     } catch (error) {
+      // Use actual API error message if available, otherwise fallback
       let errorContent = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
 
       if (error instanceof Error) {
+        // Check for specific known errors, then use the actual message
         if (error.message.includes('429')) {
           errorContent = 'Zu viele Anfragen. Bitte warten Sie einen Moment.';
-        } else if (error.message.includes('context')) {
-          errorContent = 'Bitte laden Sie zuerst ein Dokument hoch.';
+        } else if (error.message.includes('CSRF')) {
+          errorContent = 'Sitzung abgelaufen. Bitte laden Sie die Seite neu.';
+        } else if (error.message && !error.message.includes('Server error')) {
+          // Use the actual API error message (German messages from backend)
+          errorContent = error.message;
         }
       }
 
@@ -204,13 +209,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
       onQueueConsumed?.();
     }
   }, [queuedUserMessage, isLoading, sendMessageInternal, onQueueConsumed]);
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
 
   return (
     <div className="chat-interface-modern">
@@ -279,81 +277,84 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
           display: flex;
           flex-direction: column;
           height: 100%;
-          background: #ffffff;
-          border-radius: 12px;
+          background: transparent;
           overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         .chat-messages-container {
           flex: 1;
           overflow-y: auto;
-          padding: 1.5rem;
-          background: linear-gradient(to bottom, #f9fafb, #ffffff);
+          padding: 1.25rem;
+          background: transparent;
         }
 
         .chat-messages-container::-webkit-scrollbar {
-          width: 8px;
+          width: 6px;
         }
 
         .chat-messages-container::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 4px;
+          background: transparent;
         }
 
         .chat-messages-container::-webkit-scrollbar-thumb {
-          background: #c3c3c3;
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
         }
 
         .chat-messages-container::-webkit-scrollbar-thumb:hover {
-          background: #999;
+          background: rgba(255, 255, 255, 0.2);
         }
 
         .chat-input-modern {
-          padding: 1rem 1.5rem;
-          background: #ffffff;
-          border-top: 1px solid #e5e7eb;
+          padding: 0.875rem 1.25rem;
+          background: #141416;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .input-wrapper {
           display: flex;
           align-items: flex-end;
-          gap: 0.75rem;
+          gap: 0.625rem;
           position: relative;
         }
 
         .message-textarea {
           flex: 1;
-          padding: 0.75rem 1rem;
-          border: 2px solid #e5e7eb;
-          border-radius: 10px;
-          font-size: 0.95rem;
+          padding: 0.625rem 0.875rem;
+          background: #1a1a1c;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 8px;
+          font-size: 0.875rem;
           font-family: inherit;
+          color: #f5f5f5;
           resize: none;
           outline: none;
           transition: all 0.2s;
-          max-height: 200px;
+          max-height: 160px;
           line-height: 1.5;
         }
 
+        .message-textarea::placeholder {
+          color: #71717a;
+        }
+
         .message-textarea:focus {
-          border-color: #0066CC;
-          box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+          border-color: rgba(50, 184, 198, 0.5);
+          box-shadow: 0 0 0 2px rgba(50, 184, 198, 0.1);
         }
 
         .message-textarea:disabled {
-          background: #f9fafb;
-          color: #9ca3af;
+          background: #0d0d0f;
+          color: #52525b;
           cursor: not-allowed;
         }
 
         .send-button {
-          width: 44px;
-          height: 44px;
-          border-radius: 10px;
-          background: #0066CC;
-          color: white;
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          background: #32B8C6;
+          color: #0d0d0f;
           border: none;
           display: flex;
           align-items: center;
@@ -364,21 +365,21 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         }
 
         .send-button:hover:not(:disabled) {
-          background: #0052a3;
-          transform: scale(1.05);
+          background: #3dd4e4;
+          box-shadow: 0 0 12px rgba(50, 184, 198, 0.3);
         }
 
         .send-button:disabled {
-          background: #e5e7eb;
-          color: #9ca3af;
+          background: #252529;
+          color: #52525b;
           cursor: not-allowed;
         }
 
         .loading-spinner {
-          width: 20px;
-          height: 20px;
-          border: 2px solid #ffffff;
-          border-top-color: transparent;
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(13, 13, 15, 0.3);
+          border-top-color: #0d0d0f;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }
@@ -388,22 +389,22 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         }
 
         .input-helper {
-          margin-top: 0.5rem;
-          padding: 0 0.5rem;
+          margin-top: 0.375rem;
+          padding: 0 0.25rem;
         }
 
         .helper-text {
-          font-size: 0.75rem;
-          color: #6b7280;
+          font-size: 0.6875rem;
+          color: #52525b;
         }
 
         @media (max-width: 768px) {
           .chat-messages-container {
-            padding: 1rem;
+            padding: 0.875rem;
           }
 
           .chat-input-modern {
-            padding: 0.75rem 1rem;
+            padding: 0.625rem 0.875rem;
           }
         }
       `}</style>

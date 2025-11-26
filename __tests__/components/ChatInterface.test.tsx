@@ -56,8 +56,8 @@ describe('ChatInterface', () => {
   it('enables send button when input has text', () => {
     render(<ChatInterface documentId="test-doc" />);
 
-    const input = screen.getByPlaceholderText(/Stellen Sie Ihre Frage/i);
-    const sendButton = screen.getByRole('button', { name: /send/i });
+    const input = screen.getByPlaceholderText(/Stellen Sie eine Frage zu Ihrem Dokument/i);
+    const sendButton = screen.getByRole('button', { name: /nachricht senden/i });
 
     fireEvent.change(input, { target: { value: 'Test question' } });
     expect(sendButton).not.toBeDisabled();
@@ -66,10 +66,10 @@ describe('ChatInterface', () => {
   it('clears input after sending message', () => {
     render(<ChatInterface documentId="test-doc" />);
 
-    const input = screen.getByPlaceholderText(/Stellen Sie Ihre Frage/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/Stellen Sie eine Frage zu Ihrem Dokument/i) as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: 'Test question' } });
-    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+    fireEvent.click(screen.getByRole('button', { name: /nachricht senden/i }));
 
     expect(input.value).toBe('');
   });
@@ -77,7 +77,7 @@ describe('ChatInterface', () => {
   it('sends message on Enter key press', () => {
     render(<ChatInterface documentId="test-doc" />);
 
-    const input = screen.getByPlaceholderText(/Stellen Sie Ihre Frage/i);
+    const input = screen.getByPlaceholderText(/Stellen Sie eine Frage zu Ihrem Dokument/i);
 
     fireEvent.change(input, { target: { value: 'Test question' } });
     fireEvent.keyPress(input, { key: 'Enter', code: 'Enter', charCode: 13 });

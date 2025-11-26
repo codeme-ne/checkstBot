@@ -5,15 +5,14 @@ import { OpenAI } from 'openai';
 import { log } from './logger';
 import * as crypto from 'crypto';
 
+// Grounding Configuration
+const RELEVANCE_THRESHOLD = 0.65;      // Increased from 0.5
+const MIN_TOP_SCORE = 0.60;            // New guard for top match quality
+
 // Add production safeguard
 if (process.env.NODE_ENV === 'production' && process.env.TEST_MODE === 'true') {
   throw new Error('FATAL: TEST_MODE cannot be enabled in production.');
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
-});
 
 export interface RAGResponse {
   answer: string;
@@ -28,10 +27,29 @@ export interface ChatMessage {
 
 export class RAGSystem {
   private vectorDB: VectorDatabase;
+  private openai: OpenAI | null = null;
 
   constructor(vectorDB?: VectorDatabase) {
     // Use provided vectorDB or create default instance
     this.vectorDB = vectorDB || new VectorDatabase();
+  }
+
+  /**
+   * Ensure OpenAI client is initialized
+   */
+  private ensureInitialized(): void {
+    if (this.openai) {
+      return; // Already initialized
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set in environment variables');
+    }
+
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
+    });
   }
 
   /**
@@ -88,14 +106,14 @@ export class RAGSystem {
       // Store in vector database
       await this.vectorDB.storeChunks(chunksWithEmbeddings);
 
-      // Combine chunks for display content (first 5000 chars)
+      // Combine all chunks for complete document display
       const fullContent = parsedDoc.chunks.map(chunk => chunk.text).join('\n\n');
 
       return {
         success: true,
         message: `Document processed successfully. Created ${chunksWithEmbeddings.length} chunks.`,
         documentId: filename,
-        content: fullContent.substring(0, 5000),
+        content: fullContent,  // Return complete content, not truncated
       };
     } catch (error) {
       log.error('Error processing document:', { error });
@@ -105,6 +123,10 @@ export class RAGSystem {
         documentId: '',
       };
     }
+  }
+
+  async hasDocuments(): Promise<boolean> {
+    return this.vectorDB.hasDocuments();
   }
 
   /**
@@ -120,9 +142,11 @@ export class RAGSystem {
       model?: string;
     } = {}
   ): Promise<RAGResponse> {
+    this.ensureInitialized();
+
     const {
       maxSources = 5,
-      minSimilarity = 0.5, // Adjusted for text-embedding-3-small
+      minSimilarity = RELEVANCE_THRESHOLD, // Configured relevance threshold
       model = 'gpt-4-1106-preview'
     } = options;
 
@@ -145,6 +169,18 @@ export class RAGSystem {
         result => result.score >= minSimilarity
       ).slice(0, maxSources);
 
+      // After filtering by minSimilarity, add this check:
+      if (relevantSources.length > 0 && relevantSources[0].score < MIN_TOP_SCORE) {
+        console.warn(
+          `Top match score ${relevantSources[0].score.toFixed(3)} below threshold ${MIN_TOP_SCORE}`
+        );
+        return {
+          answer: "Die hochgeladenen Dokumente enthalten keine ausreichend relevanten Informationen zu dieser Frage. Bitte formulieren Sie Ihre Frage um oder laden Sie weitere relevante Dokumente hoch.",
+          sources: [],
+          confidence: 0,
+        };
+      }
+
       if (relevantSources.length === 0) {
         console.warn(
           `No relevant sources found for query: "${question}". ` +
@@ -153,7 +189,7 @@ export class RAGSystem {
           `Minimum similarity threshold is ${minSimilarity}.`
         );
         return {
-          answer: "I couldn't find relevant information in the uploaded documents to answer your question. Please try rephrasing your question or upload more relevant documents.",
+          answer: "Ich konnte in den hochgeladenen Dokumenten keine relevanten Informationen finden, um Ihre Frage zu beantworten. Bitte versuchen Sie, Ihre Frage umzuformulieren oder laden Sie weitere relevante Dokumente hoch.",
           sources: [],
           confidence: 0,
         };
@@ -174,7 +210,7 @@ export class RAGSystem {
         { role: 'user', content: userPrompt },
       ];
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai!.chat.completions.create({
         model,
         messages,
         temperature: 0.3,
@@ -206,13 +242,15 @@ export class RAGSystem {
       explanationStyle?: 'simple' | 'detailed' | 'academic';
     } = {}
   ): Promise<string> {
+    this.ensureInitialized();
+
     const { model = 'gpt-4-1106-preview', explanationStyle = 'detailed' } = options;
 
     try {
       const systemPrompt = this.createExplanationSystemPrompt(explanationStyle);
       const userPrompt = `Please explain this text: "${selectedText}"${context ? `\n\nContext: ${context}` : ''}`;
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai!.chat.completions.create({
         model,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -236,6 +274,8 @@ export class RAGSystem {
     documentSources: string[] = [],
     summaryType: 'brief' | 'detailed' | 'keypoints' = 'detailed'
   ): Promise<string> {
+    this.ensureInitialized();
+
     try {
       // Get recent chunks from specified documents or all documents
       const embeddingResponse = await embeddingService.generateEmbedding('summary overview main points key concepts');
@@ -257,7 +297,7 @@ export class RAGSystem {
       const systemPrompt = this.createSummarySystemPrompt(summaryType);
       const userPrompt = `Please create a ${summaryType} summary of the following content:\n\n${content}`;
 
-      const response = await openai.chat.completions.create({
+      const response = await this.openai!.chat.completions.create({
         model: 'gpt-4-1106-preview',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -275,21 +315,25 @@ export class RAGSystem {
   }
 
   /**
-   * Create system prompt for RAG queries
+   * Create system prompt for RAG queries (document-only grounding)
    */
   private createSystemPrompt(): string {
-    return `You are a helpful research assistant that answers questions based on provided document context. 
+    return `Du bist ein Forschungsassistent, der AUSSCHLIESSLICH auf Basis der bereitgestellten Dokumente antwortet.
 
-Rules:
-1. Use ONLY the information provided in the context to answer questions
-2. If information is not in the context, clearly state that
-3. Provide structured, educational responses suitable for academic learning
-4. Include relevant quotes or references to specific parts of the context
-5. Use bullet points or numbered lists when appropriate for clarity
-6. If the question requires comparison, organize your response clearly
-7. Always maintain an academic and professional tone
+STRIKTE REGELN:
+1. Beantworte NUR Fragen, die direkt aus dem Kontext beantwortet werden können
+2. Wenn die Information NICHT im Kontext enthalten ist, MUSST du sagen:
+   "Diese Information ist nicht in den hochgeladenen Dokumenten enthalten."
+3. NIEMALS dein allgemeines Wissen verwenden - auch wenn du die Antwort kennst
+4. Bei Teilinformationen: Sage was im Dokument steht UND was fehlt
+5. Zitiere relevante Passagen mit [1], [2] etc.
 
-Format your responses to be helpful for learning and research purposes.`;
+VERBOTEN:
+- Annahmen über nicht enthaltene Informationen
+- Allgemeinwissen einbringen
+- Über Dokumentinhalte spekulieren
+
+Format: Strukturiert, akademisch, mit Quellenverweisen.`;
   }
 
   /**
@@ -314,7 +358,7 @@ Please provide a comprehensive answer based on the context provided above.`;
       academic: 'Use academic language and provide scholarly context and analysis.'
     };
 
-    return `You are an educational assistant that explains text selections. ${styleInstructions[style]} 
+    return `You are an educational assistant that explains text selections. ${styleInstructions[style]}
 
 Format your explanations to be:
 - Clear and well-structured
@@ -337,7 +381,7 @@ Format your explanations to be:
 
 Focus on:
 - Main themes and arguments
-- Key findings or conclusions  
+- Key findings or conclusions
 - Important concepts and definitions
 - Actionable insights or recommendations
 
@@ -349,10 +393,10 @@ Structure your summary for academic and research purposes.`;
    */
   private calculateConfidence(sources: SearchResult[]): number {
     if (sources.length === 0) return 0;
-    
+
     const avgScore = sources.reduce((sum, source) => sum + source.score, 0) / sources.length;
     const sourceCount = Math.min(sources.length / 5, 1); // Normalize by expected max sources
-    
+
     return Math.round((avgScore * 0.7 + sourceCount * 0.3) * 100);
   }
 }

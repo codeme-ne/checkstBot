@@ -740,28 +740,50 @@ select.form-control {
 /* END PERPLEXITY DESIGN SYSTEM */
 /* Application-specific styles */
 
-/* Modern Design System Variables */
+/* Modern Design System Variables - Dark & Focused */
 :root {
-  --app-primary: #0066CC;
-  --app-primary-hover: #0052a3;
-  --app-bg-main: #ffffff;
-  --app-bg-secondary: #f7f7f8;
-  --app-border: #e5e5e7;
-  --app-text-primary: #1a1a1a;
-  --app-text-secondary: #666666;
-  --app-shadow-sm: 0 2px 4px rgba(0,0,0,0.04);
-  --app-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --app-shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  /* Dark Mode Color Palette */
+  --app-bg-base: #0a0a0b;
+  --app-bg-main: #0d0d0f;
+  --app-bg-elevated: #141416;
+  --app-bg-surface: #1a1a1c;
+  --app-bg-card: #1e1e22;
+  --app-bg-hover: #252529;
+
+  /* Accent Colors - Cyan/Teal for Focus */
+  --app-primary: #32B8C6;
+  --app-primary-hover: #3dd4e4;
+  --app-primary-muted: rgba(50, 184, 198, 0.15);
+  --app-primary-glow: rgba(50, 184, 198, 0.25);
+
+  /* Text Colors */
+  --app-text-primary: #f5f5f5;
+  --app-text-secondary: #a1a1aa;
+  --app-text-muted: #71717a;
+
+  /* Borders */
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.15);
+
+  /* Shadows for Dark Mode */
+  --app-shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+  --app-shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --app-shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --app-shadow-glow: 0 0 20px rgba(50, 184, 198, 0.15);
+
+  /* Gradients */
+  --app-gradient-surface: linear-gradient(180deg, #1a1a1c 0%, #141416 100%);
+  --app-gradient-card: linear-gradient(135deg, #1e1e22 0%, #1a1a1c 100%);
 }
 
-/* Main Layout */
+/* Main Layout - Dark & Focused */
 .app-container {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 0.5rem;
-  gap: 0.5rem;
+  background: var(--app-bg-base);
+  padding: 0.75rem;
+  gap: 0.75rem;
 }
 
 .document-panel,
@@ -771,38 +793,37 @@ select.form-control {
   flex-direction: column;
   overflow: hidden;
   background: var(--app-bg-main);
-  border-radius: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
   box-shadow: var(--app-shadow-lg);
 }
 
 .document-panel {
-  max-width: 45%;
+  max-width: 50%;
 }
 
 .chat-panel {
-  background: linear-gradient(to bottom, #fafafa, #ffffff);
+  background: var(--app-gradient-surface);
 }
 
-/* Panel Headers */
+/* Panel Headers - Dark Mode */
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--app-border);
-  background: linear-gradient(to right, #fafafa, #ffffff);
+  background: var(--app-bg-elevated);
   flex-shrink: 0;
-  border-radius: 16px 16px 0 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .panel-header h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--app-text-primary);
+  letter-spacing: 0.02em;
 }
 
 .document-actions {
@@ -812,7 +833,19 @@ select.form-control {
 }
 
 .search-input {
-  min-width: 200px;
+  min-width: 180px;
+  background: var(--app-bg-surface) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text-primary) !important;
+}
+
+.search-input::placeholder {
+  color: var(--app-text-muted);
+}
+
+.search-input:focus {
+  border-color: var(--app-primary) !important;
+  box-shadow: 0 0 0 2px var(--app-primary-muted) !important;
 }
 
 .llm-selector .form-control {
@@ -830,94 +863,101 @@ select.form-control {
   overflow: auto;
 }
 
-/* Document Tabs */
+/* Document Tabs - Dark Mode */
 .document-tabs {
   display: flex;
-  background-color: var(--color-bg-2);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--space-16);
+  background-color: var(--app-bg-elevated);
+  border-bottom: 1px solid var(--app-border);
+  padding: 0 0.75rem;
   flex-shrink: 0;
+  gap: 0.25rem;
 }
 
 .document-tab {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-12) var(--space-16);
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  color: var(--app-text-secondary);
+  font-size: 0.8125rem;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-standard);
+  transition: all 0.15s ease;
   border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
 
 .document-tab:hover {
-  color: var(--color-text);
-  background-color: var(--color-secondary);
+  color: var(--app-text-primary);
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .document-tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-  background-color: var(--color-surface);
+  color: #32B8C6;
+  border-bottom-color: #32B8C6;
+  background-color: transparent;
 }
 
 .tab-close {
-  margin-left: var(--space-4);
-  padding: var(--space-2);
+  margin-left: 0.25rem;
+  padding: 0.125rem;
   border: none;
   background: none;
-  color: var(--color-text-secondary);
+  color: var(--app-text-muted);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
+  border-radius: 3px;
+  font-size: 0.875rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition: all 0.15s;
 }
 
 .tab-close:hover {
-  background-color: var(--color-error);
-  color: var(--color-white);
+  background-color: rgba(255, 84, 89, 0.15);
+  color: #ff5459;
+  opacity: 1;
 }
 
-/* Document Viewer */
+/* Document Viewer - Dark Mode */
 .document-viewer {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--app-bg-main);
 }
 
 .document-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-16) var(--space-24);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-3);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--app-border);
+  background-color: var(--app-bg-elevated);
   flex-shrink: 0;
 }
 
 .document-header h2 {
   margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--app-text-primary);
 }
 
 .document-tools {
   display: flex;
-  gap: var(--space-8);
+  gap: 0.5rem;
 }
 
 .document-content {
   flex: 1;
-  padding: var(--space-24);
+  padding: 1.25rem;
   overflow-y: auto;
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  color: var(--color-text);
-  background-color: var(--color-surface);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--app-text-primary);
+  background-color: var(--app-bg-main);
 }
 
 .document-content h1,
@@ -926,28 +966,29 @@ select.form-control {
 .document-content h4,
 .document-content h5,
 .document-content h6 {
-  margin: var(--space-24) 0 var(--space-16) 0;
-  color: var(--color-text);
+  margin: 1.25rem 0 0.75rem 0;
+  color: var(--app-text-primary);
 }
 
 .document-content h1 {
-  font-size: var(--font-size-3xl);
-  border-bottom: 2px solid var(--color-border);
-  padding-bottom: var(--space-8);
+  font-size: 1.375rem;
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 0.5rem;
 }
 
 .document-content h2 {
-  font-size: var(--font-size-2xl);
-  color: var(--color-primary);
+  font-size: 1.125rem;
+  color: #32B8C6;
 }
 
 .document-content h3 {
-  font-size: var(--font-size-xl);
+  font-size: 1rem;
 }
 
 .document-content p {
-  margin: var(--space-16) 0;
-  text-align: justify;
+  margin: 0.75rem 0;
+  text-align: left;
+  color: var(--app-text-secondary);
 }
 
 .document-content ul,
@@ -1031,34 +1072,39 @@ select.form-control {
   background-color: var(--color-secondary);
 }
 
-/* Chat Status */
+/* Chat Status - Dark Mode Empty State */
 .chat-status {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-32);
+  background: var(--app-bg-main);
 }
 
 .status-content {
   text-align: center;
-  color: var(--color-text-secondary);
+  max-width: 280px;
 }
 
 .status-content svg {
   margin-bottom: var(--space-20);
-  color: var(--color-text-secondary);
+  color: var(--app-text-muted);
+  opacity: 0.5;
 }
 
 .status-content h3 {
   margin-bottom: var(--space-12);
-  color: var(--color-text);
-  font-weight: var(--font-weight-semibold);
+  color: var(--app-text-primary);
+  font-weight: 500;
+  font-size: 1.1rem;
 }
 
 .status-content p {
   margin: 0;
-  font-size: var(--font-size-base);
+  font-size: 0.875rem;
+  color: var(--app-text-secondary);
+  line-height: 1.5;
 }
 
 /* Quick Actions */

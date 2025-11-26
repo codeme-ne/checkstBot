@@ -118,15 +118,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
 
       <style jsx>{`
         .message-bubble {
-          margin: 1rem 0;
+          margin: 0.875rem 0;
           padding: 0;
-          animation: slideIn 0.3s ease;
+          animation: slideIn 0.25s ease;
         }
 
         @keyframes slideIn {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(6px);
           }
           to {
             opacity: 1;
@@ -149,10 +149,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         .message-header {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-          font-size: 0.875rem;
-          color: #666;
+          gap: 0.375rem;
+          margin-bottom: 0.375rem;
+          font-size: 0.75rem;
+          color: #71717a;
         }
 
         .message-role {
@@ -160,92 +160,98 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         }
 
         .message-time {
-          color: #999;
-          font-size: 0.75rem;
+          color: #52525b;
+          font-size: 0.6875rem;
         }
 
         .message-content {
-          max-width: 70%;
-          padding: 0.75rem 1rem;
-          border-radius: 0.75rem;
+          max-width: 75%;
+          padding: 0.625rem 0.875rem;
+          border-radius: 10px;
           position: relative;
+          font-size: 0.875rem;
+          line-height: 1.55;
         }
 
         .user-message .message-content {
-          background: #0066CC;
-          color: white;
-          border-bottom-right-radius: 0.25rem;
+          background: #32B8C6;
+          color: #0a0a0b;
+          border-bottom-right-radius: 4px;
         }
 
         .assistant-message .message-content {
-          background: #F7F7F8;
-          color: #1a1a1a;
-          border: 1px solid #E5E5E7;
-          border-bottom-left-radius: 0.25rem;
+          background: #1e1e22;
+          color: #e4e4e7;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-bottom-left-radius: 4px;
         }
 
         .message-content p {
-          margin: 0 0 0.5rem 0;
+          margin: 0 0 0.375rem 0;
         }
 
         .message-content p:last-child {
           margin-bottom: 0;
         }
 
-        /* Code blocks */
+        /* Code blocks - Dark Theme */
         .code-block-wrapper {
           margin: 0.5rem 0;
-          border-radius: 0.5rem;
+          border-radius: 8px;
           overflow: hidden;
-          background: #1e1e1e;
+          background: #0d0d0f;
+          border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .code-block-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.5rem 1rem;
-          background: #2d2d30;
-          border-bottom: 1px solid #3e3e42;
+          padding: 0.375rem 0.75rem;
+          background: #141416;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .code-language {
-          color: #cccccc;
-          font-size: 0.875rem;
+          color: #71717a;
+          font-size: 0.6875rem;
           font-family: 'SF Mono', Monaco, monospace;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .copy-button {
           background: transparent;
-          border: 1px solid #3e3e42;
-          color: #cccccc;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          font-size: 0.75rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #a1a1aa;
+          padding: 0.1875rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.6875rem;
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .copy-button:hover {
-          background: #3e3e42;
-          border-color: #007ACC;
+          background: rgba(50, 184, 198, 0.1);
+          border-color: rgba(50, 184, 198, 0.3);
+          color: #32B8C6;
         }
 
         .inline-code {
-          background: rgba(0, 102, 204, 0.1);
-          color: #0066CC;
-          padding: 0.125rem 0.25rem;
-          border-radius: 0.25rem;
+          background: rgba(50, 184, 198, 0.15);
+          color: #32B8C6;
+          padding: 0.125rem 0.3rem;
+          border-radius: 4px;
           font-family: 'SF Mono', Monaco, monospace;
-          font-size: 0.875em;
+          font-size: 0.8125em;
         }
 
         .user-message .inline-code {
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
+          background: rgba(10, 10, 11, 0.3);
+          color: #0a0a0b;
         }
 
-        /* Tables */
+        /* Tables - Dark Mode */
         .table-wrapper {
           overflow-x: auto;
           margin: 0.5rem 0;
@@ -254,62 +260,64 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         .markdown-table {
           border-collapse: collapse;
           width: 100%;
+          font-size: 0.8125rem;
         }
 
         .markdown-table th,
         .markdown-table td {
-          border: 1px solid #E5E5E7;
-          padding: 0.5rem;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 0.375rem 0.5rem;
           text-align: left;
         }
 
         .markdown-table th {
-          background: #F7F7F8;
-          font-weight: 600;
+          background: #141416;
+          font-weight: 500;
+          color: #a1a1aa;
         }
 
         /* Links */
         .markdown-link {
-          color: #0066CC;
+          color: #32B8C6;
           text-decoration: none;
           border-bottom: 1px solid transparent;
-          transition: border-color 0.2s;
+          transition: all 0.2s;
         }
 
         .markdown-link:hover {
-          border-bottom-color: #0066CC;
+          border-bottom-color: #32B8C6;
         }
 
         /* Lists */
         .markdown-list {
-          margin: 0.5rem 0;
-          padding-left: 1.5rem;
+          margin: 0.375rem 0;
+          padding-left: 1.25rem;
         }
 
         .markdown-list li {
-          margin: 0.25rem 0;
+          margin: 0.1875rem 0;
         }
 
         /* Blockquotes */
         .markdown-blockquote {
-          border-left: 4px solid #0066CC;
-          padding-left: 1rem;
-          margin: 0.5rem 0;
-          color: #666;
+          border-left: 3px solid #32B8C6;
+          padding-left: 0.75rem;
+          margin: 0.375rem 0;
+          color: #a1a1aa;
           font-style: italic;
         }
 
         /* Streaming indicator */
         .streaming-indicator {
           display: inline-flex;
-          gap: 0.25rem;
-          margin-left: 0.5rem;
+          gap: 0.1875rem;
+          margin-left: 0.375rem;
         }
 
         .streaming-indicator .dot {
-          width: 8px;
-          height: 8px;
-          background: #0066CC;
+          width: 6px;
+          height: 6px;
+          background: #32B8C6;
           border-radius: 50%;
           animation: pulse 1.4s infinite;
         }
@@ -336,7 +344,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         /* Responsive */
         @media (max-width: 768px) {
           .message-content {
-            max-width: 85%;
+            max-width: 88%;
           }
         }
       `}</style>

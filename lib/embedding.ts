@@ -1,26 +1,20 @@
 import 'openai/shims/node';
 import { OpenAI } from 'openai';
 
-// Validate API key exists
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set in environment variables');
-}
-
-// Initialize OpenAI client
-// In test environment or Node.js, we need to explicitly allow the client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  // Allow usage in test environment (jsdom)
-  dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
-});
-
 // Configuration
+// Use text-embedding-ada-002 as default for backward compatibility with existing Pinecone vectors
+// Migration to text-embedding-3-small requires re-embedding all documents
 const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-ada-002';
 const EMBEDDING_DIMENSIONS = parseInt(process.env.EMBEDDING_DIMENSIONS || '1536');
 
-// Validate dimensions
-if (EMBEDDING_DIMENSIONS !== 1536) {
-  console.warn(`Warning: Embedding dimensions (${EMBEDDING_DIMENSIONS}) may not match Pinecone index configuration`);
+// Models that support the dimensions parameter
+const MODELS_WITH_DIMENSIONS_SUPPORT = ['text-embedding-3-small', 'text-embedding-3-large'];
+
+/**
+ * Check if the current model supports the dimensions parameter
+ */
+function supportsDimensions(model: string): boolean {
+  return MODELS_WITH_DIMENSIONS_SUPPORT.includes(model);
 }
 
 export interface EmbeddingResponse {
@@ -29,10 +23,40 @@ export interface EmbeddingResponse {
 }
 
 export class EmbeddingService {
+  private openai: OpenAI | null = null;
+
+  /**
+   * Ensure OpenAI client is initialized and environment variables are valid
+   */
+  private ensureInitialized(): void {
+    if (this.openai) {
+      return; // Already initialized
+    }
+
+    // Validate API key exists
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set in environment variables');
+    }
+
+    // Validate dimensions
+    if (EMBEDDING_DIMENSIONS !== 1536) {
+      console.warn(`Warning: Embedding dimensions (${EMBEDDING_DIMENSIONS}) may not match Pinecone index configuration`);
+    }
+
+    // Initialize OpenAI client
+    // In test environment or Node.js, we need to explicitly allow the client
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      // Allow usage in test environment (jsdom)
+      dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
+    });
+  }
   /**
    * Generate embeddings for a text using OpenAI's text-embedding-3-small model with 1536 dimensions
    */
   async generateEmbedding(text: string): Promise<EmbeddingResponse> {
+    this.ensureInitialized();
+
     try {
       // Validate input
       if (typeof text !== 'string') {
@@ -42,11 +66,17 @@ export class EmbeddingService {
       // Trim and normalize text (allow empty strings for edge cases)
       const normalizedText = text.replace(/\n/g, ' ').trim();
 
-      const response = await openai.embeddings.create({
+      // Build request - only include dimensions for models that support it
+      const request: OpenAI.EmbeddingCreateParams = {
         model: EMBEDDING_MODEL,
         input: normalizedText,
-        dimensions: EMBEDDING_DIMENSIONS,
-      });
+      };
+
+      if (supportsDimensions(EMBEDDING_MODEL)) {
+        request.dimensions = EMBEDDING_DIMENSIONS;
+      }
+
+      const response = await this.openai!.embeddings.create(request);
 
       // Validate response
       if (!response.data || !response.data[0] || !response.data[0].embedding) {
@@ -84,6 +114,8 @@ export class EmbeddingService {
    * Generate embeddings for multiple texts in batch
    */
   async generateEmbeddings(texts: string[]): Promise<EmbeddingResponse[]> {
+    this.ensureInitialized();
+
     try {
       // Validate input
       if (!Array.isArray(texts)) {
@@ -103,11 +135,17 @@ export class EmbeddingService {
         return text.replace(/\n/g, ' ').trim();
       });
 
-      const response = await openai.embeddings.create({
+      // Build request - only include dimensions for models that support it
+      const request: OpenAI.EmbeddingCreateParams = {
         model: EMBEDDING_MODEL,
         input: normalizedTexts,
-        dimensions: EMBEDDING_DIMENSIONS,
-      });
+      };
+
+      if (supportsDimensions(EMBEDDING_MODEL)) {
+        request.dimensions = EMBEDDING_DIMENSIONS;
+      }
+
+      const response = await this.openai!.embeddings.create(request);
 
       // Validate response
       if (!response.data || response.data.length !== texts.length) {

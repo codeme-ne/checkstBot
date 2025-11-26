@@ -25,10 +25,15 @@ export function validateCSRFToken(req: NextApiRequest): boolean {
     return false;
   }
 
-  return crypto.timingSafeEqual(
-    Buffer.from(token),
-    Buffer.from(sessionToken)
-  );
+  const tokenBuffer = Buffer.from(token);
+  const sessionBuffer = Buffer.from(sessionToken);
+
+  // Prevent timing leak from different length buffers
+  if (tokenBuffer.length !== sessionBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(tokenBuffer, sessionBuffer);
 }
 
 export function withCSRFProtection(

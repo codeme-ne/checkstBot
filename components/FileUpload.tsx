@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { fetchCSRFToken } from '../lib/csrf-client';
 import { showToast } from './Toast';
 
@@ -20,12 +20,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [csrfToken, setCsrfToken] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     fetchCSRFToken().then(token => {
       setCsrfToken(token);
     });
   }, []);
+
+  // Stable click handler to prevent hydration issues
+  const handleButtonClick = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const handleDropzoneClick = useCallback(() => {
+    if (!isUploading && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [isUploading]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -59,6 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     if (file.size > maxSize) {
       const errorMsg = 'Datei ist zu groß. Maximale Größe: 10MB';
       setError(errorMsg);
+      onUploadError?.(errorMsg);
       showToast(errorMsg, 'error');
       return;
     }
@@ -112,8 +128,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return (
       <>
         <button
+          type="button"
           className="upload-button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleButtonClick}
           disabled={isUploading}
         >
           {isUploading ? (
@@ -140,32 +157,33 @@ const FileUpload: React.FC<FileUploadProps> = ({
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.625rem 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
+            padding: 0.5rem 0.875rem;
+            background: rgba(50, 184, 198, 0.15);
+            color: #32B8C6;
+            border: 1px solid rgba(50, 184, 198, 0.3);
+            border-radius: 6px;
+            font-size: 0.8125rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
           }
 
           .upload-button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: rgba(50, 184, 198, 0.25);
+            border-color: rgba(50, 184, 198, 0.5);
+            box-shadow: 0 0 12px rgba(50, 184, 198, 0.2);
           }
 
           .upload-button:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
           }
 
           .upload-loading {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(50, 184, 198, 0.3);
+            border-top-color: #32B8C6;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
           }
@@ -185,7 +203,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onClick={handleDropzoneClick}
+        role="button"
+        tabIndex={0}
       >
         <div className="dropzone-content">
           {isUploading ? (
@@ -230,24 +250,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
       <style jsx>{`
         .upload-dropzone {
           position: relative;
-          border: 2px dashed #e5e5e7;
-          border-radius: 12px;
-          padding: 3rem 2rem;
+          border: 1px dashed rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+          padding: 2.5rem 2rem;
           text-align: center;
           cursor: pointer;
-          transition: all 0.3s;
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+          transition: all 0.25s ease;
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .upload-dropzone:hover:not(.uploading) {
-          border-color: #667eea;
-          background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+          border-color: rgba(50, 184, 198, 0.4);
+          background: rgba(50, 184, 198, 0.05);
         }
 
         .upload-dropzone.dragging {
-          border-color: #667eea;
-          background: linear-gradient(135deg, #667eea25 0%, #764ba225 100%);
-          transform: scale(1.02);
+          border-color: #32B8C6;
+          background: rgba(50, 184, 198, 0.1);
+          box-shadow: 0 0 20px rgba(50, 184, 198, 0.15);
         }
 
         .upload-dropzone.uploading {
@@ -258,42 +278,45 @@ const FileUpload: React.FC<FileUploadProps> = ({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 1rem;
+          gap: 0.875rem;
         }
 
         .dropzone-content svg {
-          color: #667eea;
-          opacity: 0.7;
+          color: #32B8C6;
+          opacity: 0.6;
+          width: 48px;
+          height: 48px;
         }
 
         .dropzone-content h3 {
           margin: 0;
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #1a1a1a;
+          font-size: 1rem;
+          font-weight: 500;
+          color: #f5f5f5;
         }
 
         .dropzone-content p {
           margin: 0;
-          color: #666;
-          font-size: 0.875rem;
+          color: #71717a;
+          font-size: 0.8125rem;
         }
 
         .file-types {
           display: inline-block;
-          padding: 0.375rem 0.75rem;
-          background: white;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          color: #666;
-          margin-top: 0.5rem;
+          padding: 0.25rem 0.625rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 4px;
+          font-size: 0.6875rem;
+          color: #71717a;
+          margin-top: 0.25rem;
         }
 
         .upload-spinner {
-          width: 64px;
-          height: 64px;
-          border: 3px solid rgba(102, 126, 234, 0.2);
-          border-top-color: #667eea;
+          width: 48px;
+          height: 48px;
+          border: 2px solid rgba(50, 184, 198, 0.2);
+          border-top-color: #32B8C6;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
@@ -302,16 +325,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #fee;
-          border-radius: 8px;
-          color: #c00;
-          font-size: 0.875rem;
-          margin-top: 1rem;
+          padding: 0.5rem 0.875rem;
+          background: rgba(255, 84, 89, 0.1);
+          border: 1px solid rgba(255, 84, 89, 0.2);
+          border-radius: 6px;
+          color: #ff5459;
+          font-size: 0.8125rem;
+          margin-top: 0.75rem;
         }
 
         .error-badge svg {
-          color: #c00;
+          color: #ff5459;
           opacity: 1;
         }
 

@@ -50,18 +50,33 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
 
   const renderTextWithLineNumbers = () => {
     const lines = textContent.split('\n');
+    const lineHeightPx = fontSize * lineHeight;
+
     return (
       <div className="text-with-lines">
         {showLineNumbers && (
-          <div className="line-numbers">
+          <div
+            className="line-numbers"
+            style={{
+              fontSize: `${fontSize}px`,
+              lineHeight: lineHeight
+            }}
+          >
             {lines.map((_, index) => (
-              <div key={index} className="line-number">
+              <div
+                key={index}
+                className="line-number"
+                style={{ height: `${lineHeightPx}px` }}
+              >
                 {index + 1}
               </div>
             ))}
           </div>
         )}
-        <pre className="text-content-pre" style={{ fontSize: `${fontSize}px`, lineHeight }}>
+        <pre
+          className="text-content-pre"
+          style={{ fontSize: `${fontSize}px`, lineHeight }}
+        >
           {textContent}
         </pre>
       </div>
@@ -81,13 +96,14 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
             justify-content: center;
             height: 100%;
             padding: 2rem;
+            background: #0d0d0f;
           }
 
           .spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid #e5e7eb;
-            border-top-color: #0066CC;
+            border: 3px solid rgba(50, 184, 198, 0.2);
+            border-top-color: #32B8C6;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-bottom: 1rem;
@@ -100,7 +116,7 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
           }
 
           .text-loading p {
-            color: #6b7280;
+            color: #71717a;
             font-size: 0.875rem;
           }
         `}</style>
@@ -125,9 +141,10 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #ef4444;
+            color: #ff5459;
             text-align: center;
             padding: 2rem;
+            background: #0d0d0f;
           }
 
           .text-error svg {
@@ -135,12 +152,13 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
           }
 
           .text-error h3 {
-            font-size: 1.25rem;
+            font-size: 1.125rem;
             margin-bottom: 0.5rem;
           }
 
           .text-error p {
-            color: #6b7280;
+            color: #71717a;
+            font-size: 0.875rem;
           }
         `}</style>
       </div>
@@ -222,17 +240,16 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
           display: flex;
           flex-direction: column;
           height: 100%;
-          background: #fafafa;
+          background: #0d0d0f;
         }
 
         .text-controls {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.75rem 1rem;
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          padding: 0.625rem 1rem;
+          background: #141416;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           gap: 1rem;
         }
 
@@ -241,92 +258,99 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
         .controls-right {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.375rem;
         }
 
         .control-button {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
-          border: 1px solid #e5e7eb;
-          background: white;
+          width: 32px;
+          height: 32px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: transparent;
           border-radius: 6px;
           cursor: pointer;
           transition: all 0.2s;
-          color: #4b5563;
+          color: #71717a;
         }
 
         .control-button:hover {
-          background: #f3f4f6;
-          border-color: #d1d5db;
-          color: #1f2937;
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.15);
+          color: #a1a1aa;
         }
 
         .control-button.active {
-          background: #0066CC;
-          color: white;
-          border-color: #0066CC;
+          background: rgba(50, 184, 198, 0.15);
+          color: #32B8C6;
+          border-color: rgba(50, 184, 198, 0.3);
         }
 
         .control-button.font-size {
           width: auto;
-          padding: 0 0.75rem;
-          font-size: 0.875rem;
+          padding: 0 0.625rem;
+          font-size: 0.75rem;
           font-weight: 500;
         }
 
         .line-height-select {
-          padding: 0.5rem 0.75rem;
-          border: 1px solid #e5e7eb;
+          padding: 0.375rem 0.625rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 6px;
-          background: white;
-          font-size: 0.875rem;
-          color: #1f2937;
+          background: #1a1a1c;
+          font-size: 0.75rem;
+          color: #a1a1aa;
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .line-height-select:hover {
-          border-color: #d1d5db;
-          background: #f9fafb;
+          border-color: rgba(255, 255, 255, 0.15);
+          background: #1e1e22;
         }
 
         .line-height-select:focus {
           outline: none;
-          border-color: #0066CC;
-          box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+          border-color: rgba(50, 184, 198, 0.5);
+          box-shadow: 0 0 0 2px rgba(50, 184, 198, 0.1);
         }
 
         .text-content-wrapper {
           flex: 1;
           overflow: auto;
-          padding: 2rem;
-          background: white;
+          padding: 1.5rem 2rem;
+          background: #0d0d0f;
+          scroll-behavior: smooth;
         }
 
-        .text-with-lines {
-          display: flex;
+        :global(.text-with-lines) {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
           font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+          align-items: flex-start;
+          width: 100%;
         }
 
-        .line-numbers {
+        :global(.line-numbers) {
           padding-right: 1rem;
-          margin-right: 1rem;
-          border-right: 1px solid #e5e7eb;
+          margin-right: 0.5rem;
+          border-right: 1px solid rgba(255, 255, 255, 0.12);
           text-align: right;
           user-select: none;
-          color: #9ca3af;
-          font-size: 14px;
-          line-height: inherit;
+          color: #52525b;
+          font-size: 13px;
+          flex-shrink: 0;
+          min-width: 3rem;
+          position: sticky;
+          left: 0;
+          background: #0d0d0f;
         }
 
-        .line-number {
-          height: 1.8em;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
+        :global(.line-number) {
+          display: block;
+          padding: 0 0.25rem;
         }
 
         :global(.text-content-pre) {
@@ -334,9 +358,14 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
           padding: 0;
           white-space: pre-wrap;
           word-wrap: break-word;
-          color: #1f2937;
+          color: #f0f0f2;
           font-family: 'SF Mono', Monaco, 'Courier New', monospace;
           flex: 1;
+          position: relative;
+          z-index: 2;
+          letter-spacing: 0.3px;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
 
         .text-content-wrapper::-webkit-scrollbar {
@@ -345,17 +374,22 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
         }
 
         .text-content-wrapper::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .text-content-wrapper::-webkit-scrollbar-thumb {
-          background: #c3c3c3;
+          background: rgba(255, 255, 255, 0.12);
           border-radius: 4px;
+          min-height: 40px;
         }
 
         .text-content-wrapper::-webkit-scrollbar-thumb:hover {
-          background: #999;
+          background: rgba(50, 184, 198, 0.4);
+        }
+
+        :global(.text-content-pre)::selection {
+          background-color: rgba(50, 184, 198, 0.3);
+          color: inherit;
         }
 
         @media (max-width: 768px) {
@@ -373,6 +407,34 @@ const TextViewer: React.FC<TextViewerProps> = ({ file, content }) => {
 
           .text-content-wrapper {
             padding: 1rem;
+          }
+
+          :global(.line-numbers) {
+            display: none;
+          }
+        }
+
+        @media (min-width: 1600px) {
+          .text-content-wrapper {
+            padding: 2rem 2.5rem;
+          }
+        }
+
+        @media (prefers-contrast: high) {
+          :global(.text-content-pre) {
+            color: #ffffff;
+            letter-spacing: 0.5px;
+          }
+
+          :global(.line-numbers) {
+            color: #999999;
+            border-right-color: #555555;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .text-content-wrapper {
+            scroll-behavior: auto;
           }
         }
       `}</style>

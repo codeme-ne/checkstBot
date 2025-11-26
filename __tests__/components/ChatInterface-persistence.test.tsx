@@ -193,9 +193,9 @@ describe('ChatInterface - Chat History Persistence', () => {
       fireEvent.change(textarea, { target: { value: 'Test message' } });
       fireEvent.click(sendButton);
 
-      // Wait for error message
+      // Wait for error message - API error message is shown directly since component uses actual error messages
       await waitFor(() => {
-        expect(screen.getByText(/Ein Fehler ist aufgetreten/)).toBeInTheDocument();
+        expect(screen.getByText('API Error')).toBeInTheDocument();
       });
 
       // Check that user message and error message are saved
@@ -205,7 +205,7 @@ describe('ChatInterface - Chat History Persistence', () => {
       expect(conversations[documentId1]).toHaveLength(3); // welcome + user + error
       expect(conversations[documentId1][1].content).toBe('Test message');
       expect(conversations[documentId1][1].role).toBe('user');
-      expect(conversations[documentId1][2].content).toContain('Ein Fehler ist aufgetreten');
+      expect(conversations[documentId1][2].content).toBe('API Error');
       expect(conversations[documentId1][2].role).toBe('assistant');
     });
   });

@@ -117,30 +117,32 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
             align-items: center;
             justify-content: center;
             height: 100%;
-            background: #f9fafb;
-            border-radius: 12px;
+            background: #141416;
+            border-radius: 10px;
             padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.06);
           }
 
           .empty-state {
             text-align: center;
-            color: #6b7280;
+            color: #71717a;
           }
 
           .empty-state svg {
             margin: 0 auto 1rem;
-            opacity: 0.3;
+            opacity: 0.4;
+            color: #32B8C6;
           }
 
           .empty-state h3 {
-            font-size: 1.25rem;
+            font-size: 1.125rem;
             margin-bottom: 0.5rem;
-            color: #374151;
+            color: #f5f5f5;
           }
 
           .empty-state p {
-            font-size: 0.95rem;
-            color: #9ca3af;
+            font-size: 0.875rem;
+            color: #71717a;
           }
         `}</style>
       </div>
@@ -249,90 +251,91 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: white;
-          border-radius: 12px;
+          background: #141416;
+          border-radius: 10px;
           overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .document-header {
-          padding: 1.5rem;
-          border-bottom: 1px solid #e5e7eb;
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: linear-gradient(to right, #f9fafb, #ffffff);
+          background: #1a1a1c;
         }
 
         .document-info {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.875rem;
         }
 
         .document-icon {
-          font-size: 2.5rem;
+          font-size: 2rem;
           line-height: 1;
         }
 
         .document-title {
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #1f2937;
-          margin: 0 0 0.25rem 0;
+          font-size: 1rem;
+          font-weight: 500;
+          color: #f5f5f5;
+          margin: 0 0 0.125rem 0;
         }
 
         .document-meta {
-          font-size: 0.875rem;
-          color: #6b7280;
+          font-size: 0.75rem;
+          color: #32B8C6;
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
 
         .separator {
-          color: #d1d5db;
+          color: #52525b;
         }
 
         .close-button {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          color: #6b7280;
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: 1.25rem;
+          color: #71717a;
           cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
+          padding: 0.375rem 0.5rem;
+          border-radius: 6px;
           transition: all 0.2s;
         }
 
         .close-button:hover {
-          background: #f3f4f6;
-          color: #1f2937;
+          background: rgba(255, 84, 89, 0.1);
+          border-color: rgba(255, 84, 89, 0.3);
+          color: #ff5459;
         }
 
         .document-body {
           flex: 1;
           overflow-y: auto;
-          padding: 1.5rem;
+          padding: 0;
           position: relative;
+          background: #0d0d0f;
         }
 
         .document-body::-webkit-scrollbar {
-          width: 8px;
+          width: 6px;
         }
 
         .document-body::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 4px;
+          background: transparent;
         }
 
         .document-body::-webkit-scrollbar-thumb {
-          background: #c3c3c3;
-          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
         }
 
         .document-body::-webkit-scrollbar-thumb:hover {
-          background: #999;
+          background: rgba(255, 255, 255, 0.2);
         }
 
         .content-info {
@@ -341,12 +344,13 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
           align-items: center;
           justify-content: center;
           height: 100%;
+          padding: 2rem;
         }
 
         .info-card {
-          background: #f9fafb;
-          border: 2px solid #e5e7eb;
-          border-radius: 12px;
+          background: #1a1a1c;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
           padding: 2rem;
           text-align: center;
           max-width: 500px;
@@ -354,27 +358,24 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
 
         .info-card svg {
           margin: 0 auto 1rem;
-          color: #0066CC;
+          color: #32B8C6;
         }
 
         .info-card h3 {
-          font-size: 1.25rem;
-          color: #1f2937;
+          font-size: 1.125rem;
+          color: #f5f5f5;
           margin-bottom: 0.75rem;
         }
 
         .info-card p {
-          color: #6b7280;
+          color: #71717a;
           line-height: 1.6;
+          font-size: 0.875rem;
         }
 
         @media (max-width: 768px) {
           .document-header {
-            padding: 1rem;
-          }
-
-          .document-body {
-            padding: 1rem;
+            padding: 0.875rem;
           }
         }
       `}</style>

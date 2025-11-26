@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 // Configure PDF.js worker for build compatibility
@@ -31,13 +31,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
     setIsLoading(false);
   };
 
-  const goToPreviousPage = () => {
+  const goToPreviousPage = useCallback(() => {
     setPageNumber(prevPageNumber => Math.max(prevPageNumber - 1, 1));
-  };
+  }, []);
 
-  const goToNextPage = () => {
+  const goToNextPage = useCallback(() => {
     setPageNumber(prevPageNumber => Math.min(prevPageNumber + 1, numPages || 1));
-  };
+  }, [numPages]);
 
   const handlePageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
@@ -70,7 +70,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [numPages]);
+  }, [goToPreviousPage, goToNextPage]);
 
   if (error) {
     return (
