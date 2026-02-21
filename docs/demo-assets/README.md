@@ -1,9 +1,9 @@
 # Demo Assets
 
-The files in this folder are placeholder visuals generated to complete the repo execution baseline.
+The files in this folder are real UI captures from the running app.
 
-Replace before public release:
-- `checkstbot-demo.gif` with a real 45-90 second workflow capture
-- `01-upload-and-index.png` with actual upload/indexing UI
-- `02-rag-response.png` with real answer response screen
-- `03-citation-evidence.png` with source-grounding evidence panel
+Captured on 2026-02-21:
+- `checkstbot-demo.gif` (workflow recording)
+- `01-upload-and-index.png` (upload and indexed document view)
+- `02-rag-response.png` (question and grounded assistant response)
+- `03-citation-evidence.png` (citation/source evidence focused view)
