@@ -8,6 +8,14 @@
 
 A production-ready RAG-powered learning assistant that combines document processing with conversational AI to help students and researchers interact with their materials more effectively.
 
+## Demo + Outcome
+
+![checkstBot Demo](docs/demo-assets/checkstbot-demo.gif)
+
+- End-to-end workflow: upload document -> ask question -> inspect grounded response.
+- Evaluation artifact available at [docs/evaluation.md](docs/evaluation.md).
+- Release notes draft available at [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md).
+
 ## Features
 
 - **Smart Document Processing**: Upload and process PDFs, DOCX, TXT, and Markdown files
@@ -191,6 +199,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 - [Pinecone Documentation](https://docs.pinecone.io/)
 - [Next.js Documentation](https://nextjs.org/docs)
+- [Evaluation Snapshot](docs/evaluation.md)
+- [Release Notes v1.0.0](docs/releases/v1.0.0.md)
 
 ## Support
 
