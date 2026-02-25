@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { fetchCSRFToken } from '../lib/csrf-client';
 import { showToast } from './Toast';
 
@@ -18,29 +18,56 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [csrfToken, setCsrfToken] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const inputId = useId();
+
+  const hiddenFileInputStyle: React.CSSProperties = {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    border: 0
+  };
 
   useEffect(() => {
-    setIsMounted(true);
-    fetchCSRFToken().then(token => {
-      setCsrfToken(token);
-    });
+    fetchCSRFToken();
   }, []);
+
+  const triggerFilePicker = useCallback(() => {
+    if (isUploading) return;
+
+    const input = fileInputRef.current;
+    if (!input) {
+      showToast('Dateiauswahl konnte nicht geöffnet werden. Bitte Seite neu laden.', 'error');
+      return;
+    }
+
+    // Prefer the modern API when available and fall back to click()
+    const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof pickerInput.showPicker === 'function') {
+      try {
+        pickerInput.showPicker();
+        return;
+      } catch {
+        // Browser may deny showPicker; fallback below.
+      }
+    }
+
+    input.click();
+  }, [isUploading]);
 
   // Stable click handler to prevent hydration issues
   const handleButtonClick = useCallback(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }, []);
+    triggerFilePicker();
+  }, [triggerFilePicker]);
 
   const handleDropzoneClick = useCallback(() => {
-    if (!isUploading && fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }, [isUploading]);
+    triggerFilePicker();
+  }, [triggerFilePicker]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -145,10 +172,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <span>{isUploading ? 'Wird hochgeladen...' : 'Datei hochladen'}</span>
         </button>
         <input
+          id={inputId}
           type="file"
           ref={fileInputRef}
           accept=".pdf,.docx,.txt,.md"
-          style={{ display: 'none' }}
+          style={hiddenFileInputStyle}
           onChange={handleFileUpload}
         />
 
@@ -204,6 +232,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleDropzoneClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleDropzoneClick();
+          }
+        }}
         role="button"
         tabIndex={0}
       >
@@ -240,10 +274,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
       </div>
 
       <input
+        id={inputId}
         type="file"
         ref={fileInputRef}
         accept=".pdf,.docx,.txt,.md"
-        style={{ display: 'none' }}
+        style={hiddenFileInputStyle}
         onChange={handleFileUpload}
       />
 
