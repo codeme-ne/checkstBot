@@ -14,8 +14,9 @@ export const config = {
 
 // Helper function to wrap formidable's callback API in a Promise
 function parseForm(req: NextApiRequest): Promise<{ fields: Fields; files: Files }> {
+  const maxFileSize = parseInt(process.env.MAX_FILE_SIZE || '4194304', 10); // 4MB default for Vercel
   const form = new IncomingForm({
-    maxFileSize: 10 * 1024 * 1024, // 10MB limit
+    maxFileSize,
   });
 
   return new Promise((resolve, reject) => {
@@ -80,12 +81,12 @@ async function uploadHandler(
       });
     }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Validate file size (default max 4MB for Vercel Hobby request limits)
+    const maxSize = parseInt(process.env.MAX_FILE_SIZE || '4194304', 10);
     if (fileContent.length > maxSize) {
       await fs.unlink(uploadedFile.filepath).catch(() => {}); // Clean up
       return res.status(400).json({
-        error: `File too large. Maximum size is 10MB, your file is ${(fileContent.length / 1024 / 1024).toFixed(2)}MB`
+        error: `File too large. Maximum size is ${(maxSize / 1024 / 1024).toFixed(1)}MB, your file is ${(fileContent.length / 1024 / 1024).toFixed(2)}MB`
       });
     }
 
@@ -117,7 +118,8 @@ async function uploadHandler(
     const error = err instanceof Error ? err : new Error('Unknown error');
 
     if (error.message?.includes('maxFileSize')) {
-      return res.status(413).json({ error: 'File size exceeds 10MB limit' });
+      const maxSize = parseInt(process.env.MAX_FILE_SIZE || '4194304', 10);
+      return res.status(413).json({ error: `File size exceeds ${(maxSize / 1024 / 1024).toFixed(1)}MB limit` });
     } else if (error.message?.includes('vector')) {
       return res.status(503).json({ error: 'Vector database unavailable. Please try again later.' });
     } else if (error.message?.includes('parse')) {
