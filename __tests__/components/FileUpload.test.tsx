@@ -21,12 +21,12 @@ describe('FileUpload', () => {
     expect(input).toHaveAttribute('accept', '.pdf,.docx,.txt,.md');
   });
 
-  it('validates file size (max 10MB)', async () => {
+  it('validates file size (max 4MB)', async () => {
     const onError = jest.fn();
     render(<FileUpload onUploadComplete={jest.fn()} onUploadError={onError} />);
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
+    const largeFile = new File(['x'.repeat(5 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
 
     Object.defineProperty(input, 'files', {
       value: [largeFile],

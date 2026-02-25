@@ -134,10 +134,22 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = {};
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || `Server error: ${res.status}`);
+        throw new Error(data.error || data.message || `Server error: ${res.status}`);
+      }
+
+      if (!data.response) {
+        throw new Error('Ungültige Serverantwort vom Chat-Service');
       }
 
       const aiMessage: Message = {

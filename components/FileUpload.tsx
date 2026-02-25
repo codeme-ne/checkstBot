@@ -9,6 +9,8 @@ interface FileUploadProps {
   variant?: 'button' | 'dropzone';
 }
 
+const MAX_UPLOAD_SIZE = parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE || '4194304', 10); // 4MB default
+
 const FileUpload: React.FC<FileUploadProps> = ({
   onUploadComplete,
   onUploadStart,
@@ -96,10 +98,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const processFile = async (file: File) => {
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      const errorMsg = 'Datei ist zu groß. Maximale Größe: 10MB';
+    // Validate file size client-side before upload
+    if (file.size > MAX_UPLOAD_SIZE) {
+      const maxSizeMb = (MAX_UPLOAD_SIZE / 1024 / 1024).toFixed(1);
+      const errorMsg = `Datei ist zu groß. Maximale Größe: ${maxSizeMb}MB`;
       setError(errorMsg);
       onUploadError?.(errorMsg);
       showToast(errorMsg, 'error');
@@ -125,10 +127,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
         body: formData,
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = {};
+        }
+      }
 
       if (!res.ok) {
-        const errorMessage = data.error || 'Upload failed';
+        const fallbackMessage = res.status === 413
+          ? `Datei ist zu groß. Maximale Größe: ${(MAX_UPLOAD_SIZE / 1024 / 1024).toFixed(1)}MB`
+          : `Upload fehlgeschlagen (HTTP ${res.status})`;
+        const errorMessage = data.error || data.message || fallbackMessage;
         throw new Error(errorMessage);
       }
 
@@ -136,6 +149,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onUploadComplete(data.document);
         setError(null);
         showToast(`${file.name} erfolgreich hochgeladen!`, 'success');
+      } else {
+        throw new Error('Ungültige Serverantwort beim Upload');
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -257,7 +272,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               </svg>
               <h3>Dokument hier ablegen</h3>
               <p>oder klicken Sie zum Auswählen</p>
-              <span className="file-types">PDF, DOCX, TXT, MD • Max 10MB</span>
+              <span className="file-types">PDF, DOCX, TXT, MD • Max {(MAX_UPLOAD_SIZE / 1024 / 1024).toFixed(1)}MB</span>
             </>
           )}
           {error && (
