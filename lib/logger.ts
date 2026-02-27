@@ -69,19 +69,29 @@ function sanitizeMetadata(metadata: any): any {
 
 // Define which transports to use based on environment
 const transports: winston.transport[] = [];
+const isServerlessRuntime =
+  process.env.VERCEL === '1' ||
+  Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+  Boolean(process.env.LAMBDA_TASK_ROOT);
+const useFileLogs =
+  process.env.NODE_ENV === 'production' &&
+  !isServerlessRuntime &&
+  process.env.ENABLE_FILE_LOGS === 'true';
 
-if (process.env.NODE_ENV !== 'production') {
-  // Console transport for development
-  transports.push(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize({ all: true }),
-        format
-      ),
-    })
-  );
-} else {
-  // File transports for production
+// Always keep console logging available (required for serverless environments).
+transports.push(
+  new winston.transports.Console({
+    format: process.env.NODE_ENV === 'production'
+      ? format
+      : winston.format.combine(
+          winston.format.colorize({ all: true }),
+          format
+        ),
+  })
+);
+
+if (useFileLogs) {
+  // File logs are opt-in and only for writable runtimes.
   transports.push(
     new winston.transports.File({
       filename: 'logs/error.log',
