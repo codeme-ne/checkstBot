@@ -42,7 +42,10 @@ function splitIntoSentences(text: string): string[] {
 
 function toConciseAnswer(rawText: string): string {
   const plainText = stripMarkdown(rawText);
-  const sentences = splitIntoSentences(plainText);
+  const deEnumerated = plainText
+    .replace(/:\s*\d+\.\s*/g, ': ')
+    .replace(/\b\d+\.\s+(?=[A-ZÄÖÜ])/g, '');
+  const sentences = splitIntoSentences(deEnumerated);
 
   if (sentences.length === 0) {
     return 'Ich konnte dazu gerade keine klare Antwort erzeugen.';
