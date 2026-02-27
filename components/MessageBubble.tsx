@@ -97,6 +97,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
               ol({ children }) {
                 return <ol className="markdown-list ordered">{children}</ol>;
               },
+              li({ children }) {
+                return <li className="markdown-list-item">{children}</li>;
+              },
+              h3({ children }) {
+                return <h3 className="markdown-heading">{children}</h3>;
+              },
+              p({ children }) {
+                return <p className="markdown-paragraph">{children}</p>;
+              },
               // Style blockquotes
               blockquote({ children }) {
                 return <blockquote className="markdown-blockquote">{children}</blockquote>;
@@ -192,6 +201,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
 
         .message-content p:last-child {
           margin-bottom: 0;
+        }
+
+        .markdown-heading {
+          margin: 0.25rem 0 0.4rem;
+          font-size: 0.76rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: #67e8f9;
+        }
+
+        .markdown-paragraph {
+          margin: 0 0 0.45rem 0;
         }
 
         /* Code blocks - Dark Theme */
@@ -290,12 +312,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
 
         /* Lists */
         .markdown-list {
-          margin: 0.375rem 0;
+          margin: 0.3rem 0 0.15rem;
           padding-left: 1.25rem;
         }
 
-        .markdown-list li {
-          margin: 0.1875rem 0;
+        .markdown-list-item {
+          margin: 0.22rem 0;
+        }
+
+        .assistant-message .markdown-list-item {
+          color: #d4d4d8;
         }
 
         /* Blockquotes */

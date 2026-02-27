@@ -7,6 +7,81 @@ type Data = {
   response: string;
 };
 
+type SourceLike = {
+  metadata?: {
+    source?: string;
+    chunkIndex?: number;
+  };
+};
+
+const MAX_RESPONSE_SENTENCES = 3;
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^>+\s?/gm, '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitIntoSentences(text: string): string[] {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return [];
+  }
+
+  const parts = normalized.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+  return parts.map(part => part.trim()).filter(Boolean);
+}
+
+function toConciseAnswer(rawText: string): string {
+  const plainText = stripMarkdown(rawText);
+  const sentences = splitIntoSentences(plainText);
+
+  if (sentences.length === 0) {
+    return 'Ich konnte dazu gerade keine klare Antwort erzeugen.';
+  }
+
+  return sentences.slice(0, MAX_RESPONSE_SENTENCES).join(' ');
+}
+
+function buildSourceLines(sources: SourceLike[] = [], documentId?: string): string[] {
+  const deduplicated = new Set<string>();
+
+  for (const source of sources) {
+    const sourceName = source.metadata?.source || documentId || 'Dokument';
+    const chunkIndex = source.metadata?.chunkIndex;
+    const chunkLabel = typeof chunkIndex === 'number' ? `Abschnitt ${chunkIndex + 1}` : null;
+    deduplicated.add(chunkLabel ? `${sourceName} (${chunkLabel})` : sourceName);
+  }
+
+  const lines = Array.from(deduplicated);
+  if (lines.length > 0) {
+    return lines.slice(0, 4);
+  }
+
+  if (documentId) {
+    return [`${documentId} (keine exakte Textstelle erkannt)`];
+  }
+
+  return ['Keine eindeutige Textstelle gefunden'];
+}
+
+function formatResponseMarkdown(title: string, answer: string, sourceLines: string[]): string {
+  const sources = sourceLines.map((line, index) => `- [${index + 1}] ${line}`).join('\n');
+  return `### ${title}
+${answer}
+
+### Quellen
+${sources}`;
+}
+
 function extractExplainText(message: string): string | null {
   const prefixPattern = /^Bitte erkläre dieses Zitat präzise und verständlich:\s*/i;
 
@@ -84,7 +159,14 @@ async function chatHandler(
       const explanation = await ragSystem.explainText(explainText, '', {
         explanationStyle: 'detailed'
       });
-      res.status(200).json({ response: explanation });
+      const conciseExplanation = toConciseAnswer(explanation);
+      const explainSources = buildSourceLines(
+        [{ metadata: { source: documentId || 'Aktuelles Dokument' } }],
+        documentId
+      );
+      res.status(200).json({
+        response: formatResponseMarkdown('Einfache Erklärung', conciseExplanation, explainSources)
+      });
       return;
     }
 
@@ -99,7 +181,11 @@ async function chatHandler(
 
     // Pass documentId to the RAG system for context-aware responses
     const ragResponse = await ragSystem.query(message, chatHistory || [], documentId);
-    res.status(200).json({ response: ragResponse.answer });
+    const conciseAnswer = toConciseAnswer(ragResponse.answer);
+    const sourceLines = buildSourceLines(ragResponse.sources, documentId);
+    res.status(200).json({
+      response: formatResponseMarkdown('Kurzantwort', conciseAnswer, sourceLines)
+    });
   } catch (error) {
     console.error('Error in RAG query:', error);
 

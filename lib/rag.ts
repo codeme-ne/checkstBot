@@ -423,22 +423,13 @@ Wichtig:
    * Create system prompt for RAG queries (document-only grounding)
    */
   private createSystemPrompt(): string {
-    return `Du bist ein Forschungsassistent, der AUSSCHLIESSLICH auf Basis der bereitgestellten Dokumente antwortet.
+    return `Du bist ein Lernassistent und antwortest nur auf Basis des bereitgestellten Dokumentkontexts.
 
-STRIKTE REGELN:
-1. Beantworte NUR Fragen, die direkt aus dem Kontext beantwortet werden können
-2. Wenn die Information NICHT im Kontext enthalten ist, MUSST du sagen:
-   "Diese Information ist nicht in den hochgeladenen Dokumenten enthalten."
-3. NIEMALS dein allgemeines Wissen verwenden - auch wenn du die Antwort kennst
-4. Bei Teilinformationen: Sage was im Dokument steht UND was fehlt
-5. Zitiere relevante Passagen mit [1], [2] etc.
-
-VERBOTEN:
-- Annahmen über nicht enthaltene Informationen
-- Allgemeinwissen einbringen
-- Über Dokumentinhalte spekulieren
-
-Format: Strukturiert, akademisch, mit Quellenverweisen.`;
+Regeln:
+1. Verwende einfache, klare Sprache.
+2. Maximal drei kurze Sätze.
+3. Wenn Informationen fehlen, sage das direkt ohne zu spekulieren.
+4. Nutze kein externes Wissen außerhalb des Kontexts.`;
   }
 
   /**
@@ -475,7 +466,7 @@ Please provide a comprehensive answer based on the context provided above.`;
     const styleInstructions = {
       simple: 'Halte es sehr verständlich und knapp.',
       detailed: 'Erkläre präzise, praxisnah und gut strukturiert.',
-      academic: 'Erkläre fachlich präzise mit sauberer Begriffseinordnung.'
+      academic: 'Erkläre fachlich präzise, aber weiterhin klar verständlich.'
     };
 
     return `Du bist ein Lernassistent für Texterklärungen. ${styleInstructions[style]}
@@ -483,28 +474,13 @@ Please provide a comprehensive answer based on the context provided above.`;
 Regeln:
 1. Antworte in derselben Sprache wie das Zitat.
 2. Übersetze nicht automatisch. Übersetzung nur, wenn explizit verlangt.
-3. Erkläre den Sinn des Zitats und den praktischen Nutzen.
+3. Erkläre den Sinn des Zitats in einfacher Sprache und den praktischen Nutzen.
 4. Wenn der Ausschnitt abgeschnitten/fragmentiert wirkt (z. B. endet mitten im Wort), beginne die Kurzfassung mit:
    "Hinweis: Der Ausschnitt ist wahrscheinlich unvollständig."
 5. Kein unnötiges Füllmaterial, keine langen Allgemeinplätze.
 6. Erfinde keine Herkunftsgeschichten oder Fakten, die nicht im Zitat stehen.
 7. Triff keine psychologischen oder situativen Annahmen, wenn sie nicht explizit im Zitat genannt sind.
-
-Antworte IMMER in diesem Markdown-Format:
-### Kurzfassung
-<2-4 Sätze mit der Kernaussage>
-
-### Was bedeutet das konkret?
-- <Punkt 1>
-- <Punkt 2>
-- <Punkt 3>
-
-### Schlüsselbegriffe
-- **<Begriff>**: <kurze Erklärung>
-- **<Begriff>**: <kurze Erklärung>
-
-### Nächster sinnvoller Schritt
-<1 konkrete, umsetzbare Empfehlung für die nächste Unterhaltung/Aufgabe>`;
+8. Schreibe höchstens drei kurze Sätze.`;
   }
 
   /**
