@@ -2,10 +2,9 @@ import 'openai/shims/node';
 import { OpenAI } from 'openai';
 
 // Configuration
-// Use text-embedding-ada-002 as default for backward compatibility with existing Pinecone vectors
-// Migration to text-embedding-3-small requires re-embedding all documents
-const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-ada-002';
+const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = parseInt(process.env.EMBEDDING_DIMENSIONS || '1536');
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
 
 // Models that support the dimensions parameter
 const MODELS_WITH_DIMENSIONS_SUPPORT = ['text-embedding-3-small', 'text-embedding-3-large'];
@@ -47,6 +46,7 @@ export class EmbeddingService {
     // In test environment or Node.js, we need to explicitly allow the client
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      baseURL: OPENAI_BASE_URL || undefined,
       // Allow usage in test environment (jsdom)
       dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
     });

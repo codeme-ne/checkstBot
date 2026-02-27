@@ -59,11 +59,20 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ```env
 OPENAI_API_KEY=sk-your-openai-key-here
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_CHAT_MODEL=gpt-4o-mini
 PINECONE_API_KEY=your-pinecone-key-here
 PINECONE_INDEX=your-pinecone-index-name
 ```
 
 See [`.env.example`](.env.example) for all available options.
+
+For Groq, use:
+```env
+OPENAI_API_KEY=gsk_your_groq_key
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_CHAT_MODEL=llama-3.1-8b-instant
+```
 
 ## Architecture
 

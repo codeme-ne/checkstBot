@@ -8,6 +8,8 @@ import * as crypto from 'crypto';
 // Grounding Configuration
 const RELEVANCE_THRESHOLD = 0.65;      // Increased from 0.5
 const MIN_TOP_SCORE = 0.60;            // New guard for top match quality
+const DEFAULT_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
 
 // Add production safeguard
 if (process.env.NODE_ENV === 'production' && process.env.TEST_MODE === 'true') {
@@ -48,6 +50,7 @@ export class RAGSystem {
 
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      baseURL: OPENAI_BASE_URL || undefined,
       dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
     });
   }
@@ -147,7 +150,7 @@ export class RAGSystem {
     const {
       maxSources = 5,
       minSimilarity = RELEVANCE_THRESHOLD, // Configured relevance threshold
-      model = 'gpt-4-1106-preview'
+      model = DEFAULT_CHAT_MODEL
     } = options;
 
     try {
@@ -244,7 +247,7 @@ export class RAGSystem {
   ): Promise<string> {
     this.ensureInitialized();
 
-    const { model = 'gpt-4-1106-preview', explanationStyle = 'detailed' } = options;
+    const { model = DEFAULT_CHAT_MODEL, explanationStyle = 'detailed' } = options;
 
     try {
       const systemPrompt = this.createExplanationSystemPrompt(explanationStyle);
@@ -298,7 +301,7 @@ export class RAGSystem {
       const userPrompt = `Please create a ${summaryType} summary of the following content:\n\n${content}`;
 
       const response = await this.openai!.chat.completions.create({
-        model: 'gpt-4-1106-preview',
+        model: DEFAULT_CHAT_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

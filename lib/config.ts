@@ -12,9 +12,10 @@ function maskApiKey(key: string | undefined): string {
 export const config = {
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
+    baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
     embeddingDimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || '1536'),
-    chatModel: process.env.OPENAI_CHAT_MODEL || 'gpt-4-1106-preview',
+    chatModel: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
   },
   pinecone: {
     apiKey: process.env.PINECONE_API_KEY,
