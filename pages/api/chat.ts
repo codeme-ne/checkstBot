@@ -7,6 +7,25 @@ type Data = {
   response: string;
 };
 
+function extractExplainText(message: string): string | null {
+  const prefixPattern = /^Bitte erkläre dieses Zitat präzise und verständlich:\s*/i;
+
+  if (!prefixPattern.test(message)) {
+    return null;
+  }
+
+  let explainText = message.replace(prefixPattern, '').trim();
+
+  if (
+    (explainText.startsWith('"') && explainText.endsWith('"')) ||
+    (explainText.startsWith('“') && explainText.endsWith('”'))
+  ) {
+    explainText = explainText.slice(1, -1).trim();
+  }
+
+  return explainText.length > 0 ? explainText : null;
+}
+
 async function chatHandler(
   req: NextApiRequest,
   res: NextApiResponse<Data | { error: string }>
@@ -48,6 +67,27 @@ async function chatHandler(
   }
 
   try {
+    const explainText = extractExplainText(message);
+    if (explainText) {
+      if (explainText.length < 3) {
+        res.status(400).json({ error: 'Bitte markieren Sie mehr Text für die Erklärung.' });
+        return;
+      }
+
+      if (explainText.length > 2000) {
+        res.status(400).json({
+          error: 'Der markierte Text ist zu lang. Bitte wählen Sie maximal 2000 Zeichen.'
+        });
+        return;
+      }
+
+      const explanation = await ragSystem.explainText(explainText, '', {
+        explanationStyle: 'detailed'
+      });
+      res.status(200).json({ response: explanation });
+      return;
+    }
+
     // Check if documents are available before processing query
     const hasDocuments = await ragSystem.hasDocuments();
     if (!hasDocuments) {
@@ -65,12 +105,20 @@ async function chatHandler(
 
     // Provide more specific error messages
     if (error instanceof Error) {
-      if (error.message.includes('rate limit')) {
+      const lowerMessage = error.message.toLowerCase();
+
+      if (lowerMessage.includes('rate limit') || lowerMessage.includes('429')) {
         res.status(429).json({ error: 'Too many requests. Please try again later.' });
-      } else if (error.message.includes('context')) {
+      } else if (lowerMessage.includes('context length') || lowerMessage.includes('token')) {
+        res.status(400).json({
+          error: 'Die Anfrage ist zu lang. Bitte markieren Sie weniger Text und versuchen Sie es erneut.'
+        });
+      } else if (lowerMessage.includes('context')) {
         res.status(400).json({ error: 'Unable to find relevant context. Please upload a document first.' });
       } else {
-        res.status(500).json({ error: 'An error occurred while processing your request.' });
+        res.status(502).json({
+          error: 'Die Anfrage konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut.'
+        });
       }
     } else {
       res.status(500).json({ error: 'An unexpected error occurred.' });

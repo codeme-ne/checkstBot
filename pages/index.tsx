@@ -16,6 +16,8 @@ interface Document {
   uploadDate: string;
 }
 
+const MAX_EXPLAIN_SELECTION_CHARS = 2000;
+
 const Home: NextPage = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeDocument, setActiveDocument] = useState<string | null>(null);
@@ -47,7 +49,11 @@ const Home: NextPage = () => {
 
   // Handle explanation requests from document viewer
   const handleExplainText = (text: string) => {
-    const message = `Bitte erkläre dieses Zitat präzise und verständlich:\n\n"${text}"`;
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    const explainText = normalizedText.length > MAX_EXPLAIN_SELECTION_CHARS
+      ? `${normalizedText.slice(0, MAX_EXPLAIN_SELECTION_CHARS)}...`
+      : normalizedText;
+    const message = `Bitte erkläre dieses Zitat präzise und verständlich:\n\n"${explainText}"`;
     setQueuedMessage(message);
     setIsExplaining(true);
     setSelectedText(''); // Clear selection to disable button

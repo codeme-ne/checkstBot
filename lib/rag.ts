@@ -274,7 +274,8 @@ export class RAGSystem {
       };
     } catch (error) {
       log.error('Error querying RAG system:', { error });
-      throw new Error('Failed to process query');
+      const reason = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to process query: ${reason}`);
     }
   }
 
@@ -322,7 +323,8 @@ export class RAGSystem {
       return response.choices[0]?.message?.content || 'No explanation generated';
     } catch (error) {
       log.error('Error explaining text:', { error });
-      throw new Error('Failed to explain text');
+      const reason = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to explain text: ${reason}`);
     }
   }
 
