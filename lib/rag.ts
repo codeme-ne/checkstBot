@@ -10,6 +10,8 @@ const EMBEDDING_PROVIDER = (process.env.EMBEDDING_PROVIDER || 'openai').toLowerC
 const USING_LOCAL_EMBEDDINGS = EMBEDDING_PROVIDER === 'local';
 const RELEVANCE_THRESHOLD = USING_LOCAL_EMBEDDINGS ? 0.5 : 0.65;
 const MIN_TOP_SCORE = USING_LOCAL_EMBEDDINGS ? 0.45 : 0.6;
+const DOCUMENT_FILTER_FALLBACK_SOURCES = USING_LOCAL_EMBEDDINGS ? 3 : 2;
+const DOCUMENT_SEARCH_RETRY_DELAYS_MS = [150, 300];
 const DEFAULT_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
 
@@ -36,6 +38,10 @@ export class RAGSystem {
   constructor(vectorDB?: VectorDatabase) {
     // Use provided vectorDB or create default instance
     this.vectorDB = vectorDB || new VectorDatabase();
+  }
+
+  private async wait(ms: number): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -156,6 +162,15 @@ export class RAGSystem {
     } = options;
 
     try {
+      // Questions about the selected document name do not need vector retrieval.
+      if (documentId && this.isDocumentNameQuestion(question)) {
+        return {
+          answer: `Das aktuell ausgewählte Dokument heißt "${documentId}".`,
+          sources: [],
+          confidence: 100,
+        };
+      }
+
       // Generate embedding for the question
       const questionEmbedding = await embeddingService.generateEmbedding(question);
 
@@ -163,19 +178,46 @@ export class RAGSystem {
       const filter = documentId ? { source: { $eq: documentId } } : undefined;
 
       // Search for relevant document chunks
-      const searchResults = await this.vectorDB.searchSimilar(
+      let searchResults = await this.vectorDB.searchSimilar(
         questionEmbedding.embedding,
         maxSources * 2, // Get more results to filter
         filter
       );
 
+      // Pinecone can be briefly eventually-consistent right after upsert.
+      if (documentId && searchResults.length === 0) {
+        for (const delay of DOCUMENT_SEARCH_RETRY_DELAYS_MS) {
+          await this.wait(delay);
+          const retryResults = await this.vectorDB.searchSimilar(
+            questionEmbedding.embedding,
+            maxSources * 2,
+            filter
+          );
+          if (retryResults.length > 0) {
+            searchResults = retryResults;
+            break;
+          }
+        }
+      }
+
       // Filter results by minimum similarity
-      const relevantSources = searchResults.filter(
+      let relevantSources = searchResults.filter(
         result => result.score >= minSimilarity
       ).slice(0, maxSources);
+      let usedDocumentFallback = false;
+
+      // With document-specific queries we still want useful answers for generic prompts
+      // like "was ist in dem dokument?" even when lexical overlap is weak.
+      if (relevantSources.length === 0 && documentId && searchResults.length > 0) {
+        relevantSources = searchResults
+          .slice(0, Math.min(maxSources, DOCUMENT_FILTER_FALLBACK_SOURCES));
+        usedDocumentFallback = true;
+      }
 
       // After filtering by minSimilarity, add this check:
-      if (relevantSources.length > 0 && relevantSources[0].score < MIN_TOP_SCORE) {
+      if (!usedDocumentFallback &&
+          relevantSources.length > 0 &&
+          relevantSources[0].score < MIN_TOP_SCORE) {
         console.warn(
           `Top match score ${relevantSources[0].score.toFixed(3)} below threshold ${MIN_TOP_SCORE}`
         );
@@ -207,7 +249,7 @@ export class RAGSystem {
 
       // Generate response using OpenAI
       const systemPrompt = this.createSystemPrompt();
-      const userPrompt = this.createUserPrompt(question, context);
+      const userPrompt = this.createUserPrompt(question, context, documentId, relevantSources);
 
       const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
@@ -234,6 +276,18 @@ export class RAGSystem {
       log.error('Error querying RAG system:', { error });
       throw new Error('Failed to process query');
     }
+  }
+
+  private isDocumentNameQuestion(question: string): boolean {
+    const normalized = question.toLowerCase().trim();
+    const patterns = [
+      /wie\s+hei(?:ss|s|ß)t.*dokument/,
+      /name.*dokument/,
+      /what(?:'s| is)\s+the\s+name\s+of\s+the\s+document/,
+      /document\s+name/,
+    ];
+
+    return patterns.some(pattern => pattern.test(normalized));
   }
 
   /**
@@ -344,9 +398,24 @@ Format: Strukturiert, akademisch, mit Quellenverweisen.`;
   /**
    * Create user prompt with question and context
    */
-  private createUserPrompt(question: string, context: string): string {
+  private createUserPrompt(
+    question: string,
+    context: string,
+    documentId?: string,
+    sources: SearchResult[] = []
+  ): string {
+    const documentSources = Array.from(
+      new Set(sources.map(source => source.metadata?.source).filter(Boolean))
+    );
+    const sourceList = documentSources.length > 0
+      ? documentSources.join(', ')
+      : 'nicht angegeben';
+
     return `Context from documents:
 ${context}
+
+Selected document ID: ${documentId || 'nicht angegeben'}
+Document sources in context: ${sourceList}
 
 Question: ${question}
 
