@@ -5,6 +5,7 @@ import { OpenAI } from 'openai';
 const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = parseInt(process.env.EMBEDDING_DIMENSIONS || '1536');
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
+const EMBEDDING_PROVIDER = (process.env.EMBEDDING_PROVIDER || 'openai').toLowerCase();
 
 // Models that support the dimensions parameter
 const MODELS_WITH_DIMENSIONS_SUPPORT = ['text-embedding-3-small', 'text-embedding-3-large'];
@@ -24,10 +25,48 @@ export interface EmbeddingResponse {
 export class EmbeddingService {
   private openai: OpenAI | null = null;
 
+  private normalizeText(text: string): string {
+    return text.replace(/\n/g, ' ').trim();
+  }
+
+  private generateLocalEmbedding(text: string): number[] {
+    const dims = EMBEDDING_DIMENSIONS;
+    const vector = new Array(dims).fill(0);
+    const tokens = (text.toLowerCase().match(/[a-z0-9]+/g) || ['__empty__']);
+    const tokenWeight = 1 / Math.sqrt(tokens.length);
+
+    const hash = (input: string): number => {
+      let h = 2166136261;
+      for (let i = 0; i < input.length; i++) {
+        h ^= input.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    };
+
+    for (const token of tokens) {
+      const h1 = hash(token);
+      const h2 = hash(`${token}#`);
+      const idx = h1 % dims;
+      const sign = (h2 & 1) === 0 ? 1 : -1;
+      vector[idx] += sign * tokenWeight;
+    }
+
+    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    if (magnitude === 0) {
+      return vector;
+    }
+    return vector.map(v => v / magnitude);
+  }
+
   /**
    * Ensure OpenAI client is initialized and environment variables are valid
    */
   private ensureInitialized(): void {
+    if (EMBEDDING_PROVIDER === 'local') {
+      return; // Local provider requires no client initialization
+    }
+
     if (this.openai) {
       return; // Already initialized
     }
@@ -63,8 +102,14 @@ export class EmbeddingService {
         throw new Error('Invalid input: text must be a string');
       }
 
-      // Trim and normalize text (allow empty strings for edge cases)
-      const normalizedText = text.replace(/\n/g, ' ').trim();
+      const normalizedText = this.normalizeText(text);
+
+      if (EMBEDDING_PROVIDER === 'local') {
+        return {
+          embedding: this.generateLocalEmbedding(normalizedText),
+          text: normalizedText,
+        };
+      }
 
       // Build request - only include dimensions for models that support it
       const request: OpenAI.EmbeddingCreateParams = {
@@ -132,8 +177,15 @@ export class EmbeddingService {
         if (typeof text !== 'string') {
           throw new Error('Invalid input: all texts must be strings');
         }
-        return text.replace(/\n/g, ' ').trim();
+        return this.normalizeText(text);
       });
+
+      if (EMBEDDING_PROVIDER === 'local') {
+        return normalizedTexts.map(text => ({
+          embedding: this.generateLocalEmbedding(text),
+          text,
+        }));
+      }
 
       // Build request - only include dimensions for models that support it
       const request: OpenAI.EmbeddingCreateParams = {
@@ -186,7 +238,11 @@ export class EmbeddingService {
     const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
     const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
     const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-    
+
+    if (magnitudeA === 0 || magnitudeB === 0) {
+      return 0;
+    }
+
     return dotProduct / (magnitudeA * magnitudeB);
   }
 }

@@ -72,6 +72,7 @@ For Groq, use:
 OPENAI_API_KEY=gsk_your_groq_key
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_CHAT_MODEL=llama-3.1-8b-instant
+EMBEDDING_PROVIDER=local
 ```
 
 ## Architecture
