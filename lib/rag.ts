@@ -6,8 +6,10 @@ import { log } from './logger';
 import * as crypto from 'crypto';
 
 // Grounding Configuration
-const RELEVANCE_THRESHOLD = 0.65;      // Increased from 0.5
-const MIN_TOP_SCORE = 0.60;            // New guard for top match quality
+const EMBEDDING_PROVIDER = (process.env.EMBEDDING_PROVIDER || 'openai').toLowerCase();
+const USING_LOCAL_EMBEDDINGS = EMBEDDING_PROVIDER === 'local';
+const RELEVANCE_THRESHOLD = USING_LOCAL_EMBEDDINGS ? 0.5 : 0.65;
+const MIN_TOP_SCORE = USING_LOCAL_EMBEDDINGS ? 0.45 : 0.6;
 const DEFAULT_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
 
