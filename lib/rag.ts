@@ -44,6 +44,25 @@ export class RAGSystem {
     await new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private looksTruncatedSelection(text: string): boolean {
+    const trimmed = text.trim();
+    if (trimmed.length < 8) return false;
+
+    const endsWithEllipsis = /(\.\.\.|…)\s*$/.test(trimmed);
+    const openParens = (trimmed.match(/\(/g) || []).length;
+    const closeParens = (trimmed.match(/\)/g) || []).length;
+    const unmatchedParens = openParens > closeParens;
+    const quoteCount = (trimmed.match(/"/g) || []).length;
+    const unmatchedQuotes = quoteCount % 2 === 1;
+
+    const hasTerminalPunctuation = /[.!?]["')\]]?\s*$/.test(trimmed);
+    const words = trimmed.split(/\s+/);
+    const lastWord = words[words.length - 1] || '';
+    const suspiciousShortEnding = !hasTerminalPunctuation && words.length > 6 && lastWord.length <= 2;
+
+    return endsWithEllipsis || unmatchedParens || unmatchedQuotes || suspiciousShortEnding;
+  }
+
   /**
    * Ensure OpenAI client is initialized
    */
@@ -308,7 +327,23 @@ export class RAGSystem {
 
     try {
       const systemPrompt = this.createExplanationSystemPrompt(explanationStyle);
-      const userPrompt = `Please explain this text: "${selectedText}"${context ? `\n\nContext: ${context}` : ''}`;
+      const isTruncatedSelection = this.looksTruncatedSelection(selectedText);
+      const truncatedHint = isTruncatedSelection
+        ? '\nHinweis vom System: Der Zitat-Ausschnitt wirkt abgeschnitten.'
+        : '';
+      const userPrompt = `Bitte erkläre das folgende Zitat hilfreich und klar.
+
+Zitat:
+"""
+${selectedText}
+"""
+${context ? `\nZusätzlicher Kontext:\n${context}` : ''}
+${truncatedHint}
+
+Wichtig:
+- Antworte in derselben Sprache wie das Zitat.
+- Wenn der Ausschnitt erkennbar abgeschnitten ist, sage das explizit.
+- Gib eine praktische, direkt nutzbare Einordnung.`;
 
       const response = await this.openai!.chat.completions.create({
         model,
@@ -316,11 +351,20 @@ export class RAGSystem {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.3,
-        max_tokens: 500,
+        temperature: 0.2,
+        max_tokens: 700,
       });
 
-      return response.choices[0]?.message?.content || 'No explanation generated';
+      let answer = response.choices[0]?.message?.content || 'No explanation generated';
+
+      if (
+        isTruncatedSelection &&
+        !/Hinweis:\s*Der Ausschnitt ist wahrscheinlich unvollst[aä]ndig/i.test(answer)
+      ) {
+        answer = `> Hinweis: Der Ausschnitt ist wahrscheinlich unvollständig. Markiere 1-2 vollständige Sätze für eine präzisere Erklärung.\n\n${answer}`;
+      }
+
+      return answer;
     } catch (error) {
       log.error('Error explaining text:', { error });
       const reason = error instanceof Error ? error.message : 'Unknown error';
@@ -429,18 +473,38 @@ Please provide a comprehensive answer based on the context provided above.`;
    */
   private createExplanationSystemPrompt(style: 'simple' | 'detailed' | 'academic'): string {
     const styleInstructions = {
-      simple: 'Explain in simple, easy-to-understand terms suitable for beginners.',
-      detailed: 'Provide a thorough explanation with examples and context.',
-      academic: 'Use academic language and provide scholarly context and analysis.'
+      simple: 'Halte es sehr verständlich und knapp.',
+      detailed: 'Erkläre präzise, praxisnah und gut strukturiert.',
+      academic: 'Erkläre fachlich präzise mit sauberer Begriffseinordnung.'
     };
 
-    return `You are an educational assistant that explains text selections. ${styleInstructions[style]}
+    return `Du bist ein Lernassistent für Texterklärungen. ${styleInstructions[style]}
 
-Format your explanations to be:
-- Clear and well-structured
-- Appropriate for learning purposes
-- Include relevant examples when helpful
-- Break down complex concepts into understandable parts`;
+Regeln:
+1. Antworte in derselben Sprache wie das Zitat.
+2. Übersetze nicht automatisch. Übersetzung nur, wenn explizit verlangt.
+3. Erkläre den Sinn des Zitats und den praktischen Nutzen.
+4. Wenn der Ausschnitt abgeschnitten/fragmentiert wirkt (z. B. endet mitten im Wort), beginne die Kurzfassung mit:
+   "Hinweis: Der Ausschnitt ist wahrscheinlich unvollständig."
+5. Kein unnötiges Füllmaterial, keine langen Allgemeinplätze.
+6. Erfinde keine Herkunftsgeschichten oder Fakten, die nicht im Zitat stehen.
+7. Triff keine psychologischen oder situativen Annahmen, wenn sie nicht explizit im Zitat genannt sind.
+
+Antworte IMMER in diesem Markdown-Format:
+### Kurzfassung
+<2-4 Sätze mit der Kernaussage>
+
+### Was bedeutet das konkret?
+- <Punkt 1>
+- <Punkt 2>
+- <Punkt 3>
+
+### Schlüsselbegriffe
+- **<Begriff>**: <kurze Erklärung>
+- **<Begriff>**: <kurze Erklärung>
+
+### Nächster sinnvoller Schritt
+<1 konkrete, umsetzbare Empfehlung für die nächste Unterhaltung/Aufgabe>`;
   }
 
   /**
