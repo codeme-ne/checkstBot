@@ -10,9 +10,10 @@ interface MessageBubbleProps {
   content: string;
   timestamp?: string;
   isStreaming?: boolean;
+  sources?: string[];
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp, isStreaming }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp, isStreaming, sources }) => {
   const isUser = role === 'user';
 
   const copyToClipboard = (text: string) => {
@@ -116,6 +117,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
           </ReactMarkdown>
         )}
 
+        {!isUser && sources && sources.length > 0 && (
+          <div className="message-sources">
+            {sources.map((label, index) => (
+              <span key={index} className="message-source-chip" role="button" tabIndex={0}>
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
+
         {isStreaming && (
           <span className="streaming-indicator">
             <span className="dot"></span>
@@ -129,13 +140,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         .message-bubble {
           margin: 0.875rem 0;
           padding: 0;
-          animation: slideIn 0.25s ease;
+          animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         @keyframes slideIn {
           from {
             opacity: 0;
-            transform: translateY(6px);
+            transform: translateY(4px);
           }
           to {
             opacity: 1;
@@ -336,16 +347,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
         /* Streaming indicator */
         .streaming-indicator {
           display: inline-flex;
-          gap: 0.1875rem;
-          margin-left: 0.375rem;
+          align-items: center;
+          gap: 0.375rem;
+          margin-top: 0.5rem;
+          margin-left: 0;
         }
 
         .streaming-indicator .dot {
-          width: 6px;
-          height: 6px;
+          width: 8px;
+          height: 8px;
           background: #32B8C6;
           border-radius: 50%;
-          animation: pulse 1.4s infinite;
+          animation: pulse 1.4s ease-in-out infinite;
         }
 
         .streaming-indicator .dot:nth-child(2) {
@@ -358,8 +371,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, timestamp,
 
         @keyframes pulse {
           0%, 60%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
+            opacity: 0.35;
+            transform: scale(0.85);
           }
           30% {
             opacity: 1;

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import ChatInterface, { ChatInterfaceHandle } from '../components/ChatInterface';
-import FileUpload from '../components/FileUpload';
+import FileUpload, { FileUploadHandle } from '../components/FileUpload';
 import EnhancedDocumentViewer from '../components/EnhancedDocumentViewer';
 
 // Type definitions
@@ -29,6 +29,7 @@ const Home: NextPage = () => {
   const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const chatInterfaceRef = useRef<ChatInterfaceHandle>(null);
+  const uploadDropzoneRef = useRef<FileUploadHandle>(null);
 
   // Load documents from localStorage on mount
   useEffect(() => {
@@ -142,6 +143,7 @@ const Home: NextPage = () => {
           {documents.length === 0 ? (
             <div className="upload-zone-container">
               <FileUpload
+                ref={uploadDropzoneRef}
                 variant="dropzone"
                 onUploadComplete={handleUploadComplete}
                 onUploadStart={() => setIsUploading(true)}
@@ -155,7 +157,7 @@ const Home: NextPage = () => {
             <>
               <div className="document-tabs">
                 {documents.map(doc => (
-                <div key={doc.id} className={`document-tab ${doc.id === activeDocument ? 'active' : ''}`}>
+                  <div key={doc.id} className={`document-tab ${doc.id === activeDocument ? 'active' : ''}`}>
                     <span onClick={() => setActiveDocument(doc.id)} style={{ cursor: 'pointer', flex: 1 }}>
                       {doc.title}
                     </span>
@@ -198,11 +200,19 @@ const Home: NextPage = () => {
           {!activeDocument ? (
             <div className="chat-status">
               <div className="status-content">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                <svg className="status-icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden>
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
                 <h3>Bereit zum Lernen!</h3>
                 <p>Laden Sie ein Dokument hoch, um mit dem intelligenten Lernen zu beginnen.</p>
+                <button
+                  type="button"
+                  className="btn btn--primary status-cta"
+                  onClick={() => uploadDropzoneRef.current?.openFilePicker()}
+                  aria-label="Dokument hochladen"
+                >
+                  Dokument hochladen
+                </button>
               </div>
             </div>
           ) : (

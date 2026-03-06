@@ -5,6 +5,7 @@ import { rateLimit } from '../../lib/rate-limit';
 
 type Data = {
   response: string;
+  sources?: string[];
 };
 
 type SourceLike = {
@@ -76,13 +77,10 @@ function buildSourceLines(sources: SourceLike[] = [], documentId?: string): stri
   return ['Keine eindeutige Textstelle gefunden'];
 }
 
-function formatResponseMarkdown(title: string, answer: string, sourceLines: string[]): string {
-  const sources = sourceLines.map((line, index) => `- [${index + 1}] ${line}`).join('\n');
+/** Response body only (sources rendered as chips from `sources` array). */
+function formatAnswerMarkdown(title: string, answer: string): string {
   return `### ${title}
-${answer}
-
-### Quellen
-${sources}`;
+${answer}`;
 }
 
 function extractExplainText(message: string): string | null {
@@ -168,7 +166,8 @@ async function chatHandler(
         documentId
       );
       res.status(200).json({
-        response: formatResponseMarkdown('Einfache Erklärung', conciseExplanation, explainSources)
+        response: formatAnswerMarkdown('Einfache Erklärung', conciseExplanation),
+        sources: explainSources
       });
       return;
     }
@@ -187,7 +186,8 @@ async function chatHandler(
     const conciseAnswer = toConciseAnswer(ragResponse.answer);
     const sourceLines = buildSourceLines(ragResponse.sources, documentId);
     res.status(200).json({
-      response: formatResponseMarkdown('Kurzantwort', conciseAnswer, sourceLines)
+      response: formatAnswerMarkdown('Kurzantwort', conciseAnswer),
+      sources: sourceLines
     });
   } catch (error) {
     console.error('Error in RAG query:', error);

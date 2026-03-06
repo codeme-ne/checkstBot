@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useId, forwardRef, useImperativeHandle } from 'react';
 import { fetchCSRFToken } from '../lib/csrf-client';
 import { showToast } from './Toast';
 
@@ -9,14 +9,18 @@ interface FileUploadProps {
   variant?: 'button' | 'dropzone';
 }
 
+export interface FileUploadHandle {
+  openFilePicker: () => void;
+}
+
 const MAX_UPLOAD_SIZE = parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE || '4194304', 10); // 4MB default
 
-const FileUpload: React.FC<FileUploadProps> = ({
+const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({
   onUploadComplete,
   onUploadStart,
   onUploadError,
   variant = 'button'
-}) => {
+}, ref) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +74,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleDropzoneClick = useCallback(() => {
     triggerFilePicker();
   }, [triggerFilePicker]);
+
+  useImperativeHandle(ref, () => ({
+    openFilePicker: triggerFilePicker
+  }), [triggerFilePicker]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -305,7 +313,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           padding: 2.5rem 2rem;
           text-align: center;
           cursor: pointer;
-          transition: all 0.25s ease;
+          transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
           background: rgba(255, 255, 255, 0.02);
         }
 
@@ -315,9 +323,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
 
         .upload-dropzone.dragging {
-          border-color: #32B8C6;
-          background: rgba(50, 184, 198, 0.1);
-          box-shadow: 0 0 20px rgba(50, 184, 198, 0.15);
+          border-color: var(--color-primary);
+          border-width: 2px;
+          background: rgba(33, 128, 141, 0.12);
+          box-shadow: 0 0 20px rgba(33, 128, 141, 0.2);
         }
 
         .upload-dropzone.uploading {
@@ -395,6 +404,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
       `}</style>
     </>
   );
-};
+});
+
+FileUpload.displayName = 'FileUpload';
 
 export default FileUpload;

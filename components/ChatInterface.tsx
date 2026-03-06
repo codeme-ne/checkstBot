@@ -16,6 +16,7 @@ interface Message {
   timestamp: string;
   model?: string;
   isStreaming?: boolean;
+  sources?: string[];
 }
 
 export interface ChatInterfaceHandle {
@@ -135,7 +136,7 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
       });
 
       const responseText = await res.text();
-      let data: any = {};
+      let data: { response?: string; error?: string; message?: string; sources?: string[] } = {};
       if (responseText) {
         try {
           data = JSON.parse(responseText);
@@ -157,7 +158,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
         role: 'assistant',
         content: data.response,
         timestamp: new Date().toISOString(),
-        model: CHAT_MODEL
+        model: CHAT_MODEL,
+        sources: Array.isArray(data.sources) ? data.sources : undefined
       };
 
       setMessages(prev => {
@@ -232,6 +234,7 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
             content={msg.content}
             timestamp={msg.timestamp}
             isStreaming={msg.isStreaming}
+            sources={msg.sources}
           />
         ))}
         {isLoading && (

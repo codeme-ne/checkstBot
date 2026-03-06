@@ -19,6 +19,7 @@ interface Message {
   timestamp: string;
   model?: string;
   isStreaming?: boolean;
+  sources?: string[];
 }
 
 interface ConversationData {
