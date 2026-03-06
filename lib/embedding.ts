@@ -1,11 +1,11 @@
 import 'openai/shims/node';
 import { OpenAI } from 'openai';
+import { config } from './config';
 
-// Configuration
-const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-const EMBEDDING_DIMENSIONS = parseInt(process.env.EMBEDDING_DIMENSIONS || '1536');
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
-const EMBEDDING_PROVIDER = (process.env.EMBEDDING_PROVIDER || 'openai').toLowerCase();
+// Configuration — sourced from centralized config
+const EMBEDDING_MODEL = config.embedding.model;
+const EMBEDDING_DIMENSIONS = config.embedding.dimensions;
+const EMBEDDING_PROVIDER = config.embedding.provider;
 
 // Models that support the dimensions parameter
 const MODELS_WITH_DIMENSIONS_SUPPORT = ['text-embedding-3-small', 'text-embedding-3-large'];
@@ -72,8 +72,9 @@ export class EmbeddingService {
     }
 
     // Validate API key exists
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set in environment variables');
+    if (!config.embedding.apiKey) {
+      const keyName = process.env.EMBEDDING_API_KEY !== undefined ? 'EMBEDDING_API_KEY' : 'OPENAI_API_KEY';
+      throw new Error(`${keyName} is not set in environment variables`);
     }
 
     // Validate dimensions
@@ -81,12 +82,10 @@ export class EmbeddingService {
       console.warn(`Warning: Embedding dimensions (${EMBEDDING_DIMENSIONS}) may not match Pinecone index configuration`);
     }
 
-    // Initialize OpenAI client
-    // In test environment or Node.js, we need to explicitly allow the client
+    // Initialize OpenAI client with embedding-specific credentials
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL || undefined,
-      // Allow usage in test environment (jsdom)
+      apiKey: config.embedding.apiKey,
+      baseURL: config.embedding.baseUrl,
       dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
     });
   }
@@ -146,7 +145,8 @@ export class EmbeddingService {
       if (error.status === 429) {
         throw new Error('Rate limit exceeded. Please try again later.');
       } else if (error.status === 401) {
-        throw new Error('Invalid API key. Please check your OpenAI API key.');
+        const keyName = process.env.EMBEDDING_API_KEY ? 'EMBEDDING_API_KEY' : 'OPENAI_API_KEY';
+        throw new Error(`Invalid API key. Please check your ${keyName}.`);
       } else if (error.message) {
         throw new Error(`Failed to generate embedding: ${error.message}`);
       } else {
@@ -222,7 +222,8 @@ export class EmbeddingService {
       if (error.status === 429) {
         throw new Error('Rate limit exceeded. Please try again later.');
       } else if (error.status === 401) {
-        throw new Error('Invalid API key. Please check your OpenAI API key.');
+        const keyName = process.env.EMBEDDING_API_KEY ? 'EMBEDDING_API_KEY' : 'OPENAI_API_KEY';
+        throw new Error(`Invalid API key. Please check your ${keyName}.`);
       } else if (error.message) {
         throw new Error(`Failed to generate embeddings: ${error.message}`);
       } else {
