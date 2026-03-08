@@ -3,7 +3,7 @@ import { fetchCSRFToken } from '../lib/csrf-client';
 import { showToast } from './Toast';
 
 interface FileUploadProps {
-  onUploadComplete: (document: { id: string; title: string }) => void;
+  onUploadComplete: (document: { id: string; title: string; file?: File }) => void;
   onUploadStart?: () => void;
   onUploadError?: (error: string) => void;
   variant?: 'button' | 'dropzone';
@@ -154,7 +154,7 @@ const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({
       }
 
       if (data.success && data.document) {
-        onUploadComplete(data.document);
+        onUploadComplete({ ...data.document, file });
         setError(null);
         showToast(`${file.name} erfolgreich hochgeladen!`, 'success');
       } else {

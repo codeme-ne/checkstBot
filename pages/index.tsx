@@ -14,6 +14,7 @@ interface Document {
   content: string;
   type: string;
   uploadDate: string;
+  file?: File;
 }
 
 const MAX_EXPLAIN_SELECTION_CHARS = 2000;
@@ -78,13 +79,14 @@ const Home: NextPage = () => {
   }
 
   // Handle successful file upload
-  const handleUploadComplete = (doc: { id: string; title: string; content?: string }) => {
+  const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
     const newDoc: Document = {
       id: doc.id, // Use document ID from API (filename)
       title: doc.title,
       content: doc.content || '[Content stored in vector database]',
-      type: 'uploaded',
-      uploadDate: new Date().toISOString()
+      type: doc.file?.type || 'uploaded',
+      uploadDate: new Date().toISOString(),
+      file: doc.file,
     };
 
     // Update state and save to localStorage
