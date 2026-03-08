@@ -3,17 +3,16 @@ import { VectorDatabase, SearchResult } from './vector-db';
 import { documentParser } from './document-parser';
 import { OpenAI } from 'openai';
 import { log } from './logger';
+import { config } from './config';
 import * as crypto from 'crypto';
 
-// Grounding Configuration
-const EMBEDDING_PROVIDER = (process.env.EMBEDDING_PROVIDER || 'openai').toLowerCase();
-const USING_LOCAL_EMBEDDINGS = EMBEDDING_PROVIDER === 'local';
+// Grounding Configuration — provider sourced from centralized config
+const USING_LOCAL_EMBEDDINGS = config.embedding.provider === 'local';
 const RELEVANCE_THRESHOLD = USING_LOCAL_EMBEDDINGS ? 0.5 : 0.65;
 const MIN_TOP_SCORE = USING_LOCAL_EMBEDDINGS ? 0.45 : 0.6;
 const DOCUMENT_FILTER_FALLBACK_SOURCES = USING_LOCAL_EMBEDDINGS ? 3 : 2;
 const DOCUMENT_SEARCH_RETRY_DELAYS_MS = [150, 300];
-const DEFAULT_CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini';
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim();
+const DEFAULT_CHAT_MODEL = config.chat.model;
 
 // Add production safeguard
 if (process.env.NODE_ENV === 'production' && process.env.TEST_MODE === 'true') {
@@ -71,13 +70,13 @@ export class RAGSystem {
       return; // Already initialized
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!config.chat.apiKey) {
       throw new Error('OPENAI_API_KEY is not set in environment variables');
     }
 
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL || undefined,
+      apiKey: config.chat.apiKey,
+      baseURL: config.chat.baseUrl,
       dangerouslyAllowBrowser: process.env.TEST_MODE === 'true',
     });
   }

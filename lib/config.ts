@@ -1,5 +1,9 @@
 /**
- * Centralized configuration for the application
+ * Centralized configuration for the application.
+ *
+ * This is the single source of truth for all environment-based settings.
+ * Both lib/rag.ts and lib/embedding.ts import from here — do NOT read
+ * process.env directly in consumer modules.
  */
 
 // Helper function to mask API keys for logging
@@ -9,13 +13,38 @@ function maskApiKey(key: string | undefined): string {
   return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
 }
 
+/**
+ * Resolve the base URL for the embedding client.
+ *
+ * Critical fallback logic:
+ *  1. EMBEDDING_BASE_URL explicitly set            -> use it
+ *  2. EMBEDDING_API_KEY set (but no base URL)      -> default to OpenAI
+ *     (prevents sending a native OpenAI key to OpenRouter by accident)
+ *  3. Neither set                                  -> inherit OPENAI_BASE_URL
+ */
+function resolveEmbeddingBaseUrl(): string | undefined {
+  const explicit = process.env.EMBEDDING_BASE_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  if (process.env.EMBEDDING_API_KEY) {
+    return 'https://api.openai.com/v1';
+  }
+  return process.env.OPENAI_BASE_URL?.trim() || undefined;
+}
+
 export const config = {
-  openai: {
+  chat: {
     apiKey: process.env.OPENAI_API_KEY,
-    baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
-    embeddingDimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || '1536'),
-    chatModel: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
+    baseUrl: process.env.OPENAI_BASE_URL?.trim() || undefined,
+    model: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
+  },
+  embedding: {
+    provider: (process.env.EMBEDDING_PROVIDER || 'openai').toLowerCase(),
+    apiKey: process.env.EMBEDDING_API_KEY || process.env.OPENAI_API_KEY,
+    baseUrl: resolveEmbeddingBaseUrl(),
+    model: process.env.EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    dimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || '1536'),
   },
   pinecone: {
     apiKey: process.env.PINECONE_API_KEY,
@@ -38,9 +67,14 @@ export const config = {
 export function validateConfig(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  // Check required API keys
-  if (!config.openai.apiKey) {
+  if (!config.chat.apiKey) {
     errors.push('OPENAI_API_KEY is not set');
+  }
+
+  // Embedding key is only required when provider is not local
+  if (config.embedding.provider !== 'local' && !config.embedding.apiKey) {
+    const keyName = process.env.EMBEDDING_API_KEY ? 'EMBEDDING_API_KEY' : 'OPENAI_API_KEY';
+    errors.push(`${keyName} is not set (required for embedding provider "${config.embedding.provider}")`);
   }
 
   if (!config.pinecone.apiKey) {
@@ -51,12 +85,10 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
     errors.push('PINECONE_INDEX is not set');
   }
 
-  // Validate dimensions
-  if (config.openai.embeddingDimensions !== 1536) {
-    errors.push(`Embedding dimensions (${config.openai.embeddingDimensions}) may not match Pinecone configuration (1536)`);
+  if (config.embedding.dimensions !== 1536) {
+    errors.push(`Embedding dimensions (${config.embedding.dimensions}) may not match Pinecone configuration (1536)`);
   }
 
-  // Validate chunk configuration
   if (config.chunking.size <= 0) {
     errors.push('CHUNK_SIZE must be greater than 0');
   }
@@ -82,9 +114,7 @@ export function getConfig() {
   const validation = validateConfig();
 
   if (!validation.valid && process.env.NODE_ENV !== 'test') {
-    // Log errors without exposing sensitive data
     const safeErrors = validation.errors.map(error => {
-      // Never log actual API keys
       if (error.includes('API_KEY')) {
         return error.replace(/is not set/, 'is missing (check .env.local)');
       }
@@ -92,7 +122,6 @@ export function getConfig() {
     });
 
     if (process.env.NODE_ENV === 'production') {
-      // In production, don't log configuration errors to console
       throw new Error('Configuration error. Check server logs.');
     } else {
       console.error('Configuration validation failed:', safeErrors);
@@ -108,11 +137,17 @@ export function getConfig() {
  */
 export function getSafeConfig() {
   return {
-    openai: {
-      apiKey: maskApiKey(config.openai.apiKey),
-      embeddingModel: config.openai.embeddingModel,
-      embeddingDimensions: config.openai.embeddingDimensions,
-      chatModel: config.openai.chatModel,
+    chat: {
+      apiKey: maskApiKey(config.chat.apiKey),
+      baseUrl: config.chat.baseUrl || '(default: api.openai.com)',
+      model: config.chat.model,
+    },
+    embedding: {
+      provider: config.embedding.provider,
+      apiKey: maskApiKey(config.embedding.apiKey),
+      baseUrl: config.embedding.baseUrl || '(default: api.openai.com)',
+      model: config.embedding.model,
+      dimensions: config.embedding.dimensions,
     },
     pinecone: {
       apiKey: maskApiKey(config.pinecone.apiKey),
