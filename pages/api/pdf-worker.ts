@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
 
 let cachedWorkerSource: string | null = null;
+const IMMUTABLE_CACHE_SECONDS = 31536000;
 
 const resolveWorkerPath = () => {
   try {
@@ -23,7 +24,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
     }
 
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Cache-Control', `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`);
     return res.status(200).send(cachedWorkerSource);
   } catch (error) {
     console.error('Failed to load PDF worker source:', error);
