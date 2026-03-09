@@ -3,7 +3,6 @@ import type { NextPage } from 'next';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { v4 as uuidv4 } from 'uuid';
 import ChatInterface, { ChatInterfaceHandle } from '../components/ChatInterface';
 import FileUpload, { FileUploadHandle } from '../components/FileUpload';
 import EnhancedDocumentViewer from '../components/EnhancedDocumentViewer';
@@ -104,8 +103,7 @@ const Home: NextPage = () => {
 
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
-    const generatedId = globalThis.crypto?.randomUUID?.()
-      ?? uuidv4();
+    const generatedId = globalThis.crypto.randomUUID();
     const newDoc: Document = {
       id: generatedId,
       documentId: doc.id,

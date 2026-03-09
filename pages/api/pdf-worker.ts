@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs/promises';
 
 let cachedWorkerSource: string | null = null;
-const IMMUTABLE_CACHE_SECONDS = 31536000;
+const IMMUTABLE_CACHE_SECONDS = 365 * 24 * 60 * 60;
 
 const resolveWorkerPath = () => {
   try {
@@ -10,7 +10,8 @@ const resolveWorkerPath = () => {
   } catch (primaryError) {
     try {
       return require.resolve('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-    } catch {
+    } catch (legacyError) {
+      console.error('Failed to resolve legacy PDF worker source:', legacyError);
       throw primaryError;
     }
   }
