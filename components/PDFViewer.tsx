@@ -1,9 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 
-// Configure PDF.js worker for build compatibility
+let pdfWorkerConfigured = false;
+
+const configurePdfWorker = () => {
+  if (typeof window === 'undefined' || pdfWorkerConfigured) {
+    return;
+  }
+
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString();
+  pdfWorkerConfigured = true;
+};
+
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/api/pdf-worker';
+  configurePdfWorker();
 }
 
 interface PDFViewerProps {
@@ -18,48 +31,51 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [renderTextLayer, setRenderTextLayer] = useState(true);
+  const documentSource = file ?? url;
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
+  const onDocumentLoadSuccess = ({ numPages: loadedPages }: { numPages: number }) => {
+    setNumPages(loadedPages);
+    setPageNumber(1);
     setIsLoading(false);
     setError(null);
   };
 
-  const onDocumentLoadError = (error: Error) => {
-    console.error('PDF loading error:', error);
+  const onDocumentLoadError = (loadError: Error) => {
+    console.error('PDF loading error:', loadError);
     setError('Fehler beim Laden des PDF-Dokuments');
     setIsLoading(false);
   };
 
   const goToPreviousPage = useCallback(() => {
-    setPageNumber(prevPageNumber => Math.max(prevPageNumber - 1, 1));
+    setPageNumber((prevPageNumber) => Math.max(prevPageNumber - 1, 1));
   }, []);
 
   const goToNextPage = useCallback(() => {
-    setPageNumber(prevPageNumber => Math.min(prevPageNumber + 1, numPages || 1));
+    setPageNumber((prevPageNumber) => Math.min(prevPageNumber + 1, numPages || 1));
   }, [numPages]);
 
   const handlePageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 1 && value <= (numPages || 1)) {
+    const value = Number.parseInt(e.target.value, 10);
+    if (!Number.isNaN(value) && value >= 1 && value <= (numPages || 1)) {
       setPageNumber(value);
     }
   };
 
   const zoomIn = () => {
-    setScale(prevScale => Math.min(prevScale + 0.2, 3.0));
+    setScale((prevScale) => Math.min(prevScale + 0.2, 3.0));
   };
 
   const zoomOut = () => {
-    setScale(prevScale => Math.max(prevScale - 0.2, 0.5));
+    setScale((prevScale) => Math.max(prevScale - 0.2, 0.5));
   };
 
   const resetZoom = () => {
     setScale(1.0);
   };
 
-  // Handle keyboard navigation
   useEffect(() => {
+    configurePdfWorker();
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         goToPreviousPage();
@@ -72,9 +88,39 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goToPreviousPage, goToNextPage]);
 
+  if (!documentSource) {
+    return (
+      <div className="pdf-error" role="alert">
+        <h3>Kein PDF verfuegbar</h3>
+        <p>Das Dokument kann in dieser Sitzung nicht angezeigt werden.</p>
+        <style jsx>{`
+          .pdf-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #ef4444;
+            text-align: center;
+            padding: 2rem;
+          }
+
+          .pdf-error h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .pdf-error p {
+            color: #6b7280;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <div className="pdf-error">
+      <div className="pdf-error" role="alert" data-testid="pdf-load-error">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -112,15 +158,14 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
   }
 
   return (
-    <div className="pdf-viewer-container">
-      {/* PDF Controls */}
+    <div className="pdf-viewer-container" data-testid="pdf-viewer">
       <div className="pdf-controls">
         <div className="pdf-controls-left">
           <button
             onClick={goToPreviousPage}
             disabled={pageNumber <= 1}
             className="control-button"
-            title="Vorherige Seite (←)"
+            title="Vorherige Seite (Pfeil links)"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6"></polyline>
@@ -144,7 +189,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
             onClick={goToNextPage}
             disabled={pageNumber >= (numPages || 1)}
             className="control-button"
-            title="Nächste Seite (→)"
+            title="Naechste Seite (Pfeil rechts)"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="9 18 15 12 9 6"></polyline>
@@ -153,11 +198,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
         </div>
 
         <div className="pdf-controls-center">
-          <button
-            onClick={zoomOut}
-            className="control-button"
-            title="Verkleinern"
-          >
+          <button onClick={zoomOut} className="control-button" title="Verkleinern">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
@@ -165,19 +206,11 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
             </svg>
           </button>
 
-          <button
-            onClick={resetZoom}
-            className="control-button zoom-level"
-            title="Zoom zurücksetzen"
-          >
+          <button onClick={resetZoom} className="control-button zoom-level" title="Zoom zuruecksetzen">
             {Math.round(scale * 100)}%
           </button>
 
-          <button
-            onClick={zoomIn}
-            className="control-button"
-            title="Vergrößern"
-          >
+          <button onClick={zoomIn} className="control-button" title="Vergroessern">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
@@ -202,7 +235,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
         </div>
       </div>
 
-      {/* PDF Document */}
       <div className="pdf-document-wrapper">
         {isLoading && (
           <div className="pdf-loading">
@@ -212,7 +244,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
         )}
 
         <Document
-          file={file}
+          file={documentSource}
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
           loading={<div></div>}
@@ -221,7 +253,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
             pageNumber={pageNumber}
             scale={scale}
             renderTextLayer={renderTextLayer}
-            renderAnnotationLayer={true}
+            renderAnnotationLayer
             className="pdf-page"
           />
         </Document>
@@ -282,9 +314,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
         }
 
         .control-button.active {
-          background: #0066CC;
+          background: #0066cc;
           color: white;
-          border-color: #0066CC;
+          border-color: #0066cc;
         }
 
         .control-button.zoom-level {
@@ -358,7 +390,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ file, url }) => {
           width: 40px;
           height: 40px;
           border: 4px solid #e5e7eb;
-          border-top-color: #0066CC;
+          border-top-color: #0066cc;
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin-bottom: 1rem;

@@ -23,6 +23,7 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
   compress: true,
+  swcMinify: false,
 
   // Handle PDF.js compatibility
   experimental: {

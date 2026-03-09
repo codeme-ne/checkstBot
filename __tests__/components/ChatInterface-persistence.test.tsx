@@ -27,6 +27,12 @@ const mockApiResponse = {
   response: 'This is a mocked AI response'
 };
 
+const createMockResponse = () => ({
+  ok: true,
+  text: () => Promise.resolve(JSON.stringify(mockApiResponse)),
+  json: () => Promise.resolve(mockApiResponse),
+});
+
 // Mock fetch globally
 global.fetch = jest.fn();
 
@@ -48,10 +54,7 @@ describe('ChatInterface - Chat History Persistence', () => {
 
   describe('message persistence', () => {
     it('should save messages to storage when user sends a message', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(createMockResponse());
 
       render(<ChatInterface documentId={documentId1} />);
 
@@ -132,10 +135,7 @@ describe('ChatInterface - Chat History Persistence', () => {
     });
 
     it('should maintain separate conversations for different documents', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(createMockResponse());
 
       // First document conversation
       const { rerender } = render(<ChatInterface documentId={documentId1} />);
@@ -212,10 +212,7 @@ describe('ChatInterface - Chat History Persistence', () => {
 
   describe('message ordering and timestamps', () => {
     it('should maintain chronological order of messages', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(createMockResponse());
 
       render(<ChatInterface documentId={documentId1} />);
 
@@ -253,10 +250,7 @@ describe('ChatInterface - Chat History Persistence', () => {
     });
 
     it('should assign unique IDs to all messages', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(createMockResponse());
 
       render(<ChatInterface documentId={documentId1} />);
 

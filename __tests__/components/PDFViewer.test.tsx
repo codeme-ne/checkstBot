@@ -12,7 +12,7 @@ jest.mock('react-pdf', () => ({
 }));
 
 describe('PDFViewer', () => {
-  it('configures a bundled PDF.js worker instead of a CDN URL', () => {
+  it('configures a bundled PDF.js worker asset instead of the deleted API route', () => {
     let workerSrc = '';
 
     jest.isolateModules(() => {
@@ -21,7 +21,7 @@ describe('PDFViewer', () => {
       workerSrc = pdfjs.GlobalWorkerOptions.workerSrc;
     });
 
-    expect(workerSrc).toBe('/api/pdf-worker');
-    expect(workerSrc).not.toContain('unpkg.com');
+    expect(workerSrc).toContain('pdf.worker.min.mjs');
+    expect(workerSrc).not.toContain('/api/pdf-worker');
   });
 });

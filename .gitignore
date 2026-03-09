@@ -70,6 +70,8 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
+playwright-report/
+test-results/
 
 # Dependency lock files (keep package-lock.json but ignore others)
 yarn.lock
