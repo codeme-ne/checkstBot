@@ -10,6 +10,7 @@ import EnhancedDocumentViewer from '../components/EnhancedDocumentViewer';
 // Type definitions
 interface Document {
   id: string;
+  documentId: string;
   title: string;
   content: string;
   type: string;
@@ -37,7 +38,11 @@ const Home: NextPage = () => {
     try {
       const savedDocs = localStorage.getItem('chat_documents');
       if (savedDocs) {
-        const parsedDocs = JSON.parse(savedDocs);
+        const parsedDocs = JSON.parse(savedDocs).map((doc: Document & { documentId?: string }) => ({
+          ...doc,
+          documentId: doc.documentId || doc.id,
+          file: undefined
+        }));
         setDocuments(parsedDocs);
         if (parsedDocs.length > 0) {
           setActiveDocument((current) => current ?? parsedDocs[0].id);
@@ -80,8 +85,11 @@ const Home: NextPage = () => {
 
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
+    const generatedId = globalThis.crypto?.randomUUID?.()
+      ?? `${doc.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newDoc: Document = {
-      id: doc.id, // Use document ID from API (filename)
+      id: generatedId,
+      documentId: doc.id,
       title: doc.title,
       content: doc.content || '[Content stored in vector database]',
       type: doc.file?.type || 'uploaded',
@@ -95,7 +103,9 @@ const Home: NextPage = () => {
     setActiveDocument(newDoc.id);
 
     try {
-      localStorage.setItem('chat_documents', JSON.stringify(updatedDocs));
+      localStorage.setItem('chat_documents', JSON.stringify(
+        updatedDocs.map(({ file, ...storedDoc }) => storedDoc)
+      ));
     } catch (error) {
       console.error('Failed to save documents to storage', error);
     }
@@ -116,7 +126,9 @@ const Home: NextPage = () => {
 
     // Save to localStorage
     try {
-      localStorage.setItem('chat_documents', JSON.stringify(updatedDocs));
+      localStorage.setItem('chat_documents', JSON.stringify(
+        updatedDocs.map(({ file, ...storedDoc }) => storedDoc)
+      ));
     } catch (error) {
       console.error('Failed to save documents to storage', error);
     }
@@ -220,7 +232,7 @@ const Home: NextPage = () => {
           ) : (
             <ChatInterface
               ref={chatInterfaceRef}
-              documentId={activeDocument}
+              documentId={activeDoc?.documentId || activeDocument}
               queuedUserMessage={queuedMessage || undefined}
               onQueueConsumed={handleQueueConsumed}
             />
