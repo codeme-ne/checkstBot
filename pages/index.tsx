@@ -32,7 +32,8 @@ const isStoredDocument = (doc: unknown): doc is StoredDocument => {
     && typeof candidate.title === 'string'
     && typeof candidate.type === 'string'
     && typeof candidate.uploadDate === 'string'
-    && typeof candidate.content === 'string';
+    && typeof candidate.content === 'string'
+    && (candidate.documentId === undefined || typeof candidate.documentId === 'string');
 };
 
 const Home: NextPage = () => {

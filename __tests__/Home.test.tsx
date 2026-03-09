@@ -55,7 +55,7 @@ describe('Home', () => {
     expect(heading).toBeInTheDocument();
   });
 
-  it('closes only the selected document when uploads share the same backend id', () => {
+  it('closes only the selected tab when multiple uploads share the same backend document id', () => {
     render(<Home />);
 
     const uploadButtons = screen.getAllByRole('button', { name: /mock upload/i });
