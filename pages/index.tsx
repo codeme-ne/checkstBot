@@ -18,10 +18,11 @@ interface Document {
   file?: File;
 }
 
-const MAX_EXPLAIN_SELECTION_CHARS = 2000;
-let fallbackDocumentCounter = 0;
+type StoredDocument = Omit<Document, 'documentId' | 'file'> & { documentId?: string };
 
-const isStoredDocument = (doc: unknown): doc is Omit<Document, 'documentId' | 'file'> & { documentId?: string } => {
+const MAX_EXPLAIN_SELECTION_CHARS = 2000;
+
+const isStoredDocument = (doc: unknown): doc is StoredDocument => {
   if (!doc || typeof doc !== 'object') {
     return false;
   }
@@ -55,7 +56,7 @@ const Home: NextPage = () => {
         // Older persisted documents stored the backend document id in `id`.
         const parsedDocs = JSON.parse(savedDocs)
           .filter(isStoredDocument)
-          .map((doc: Omit<Document, 'documentId' | 'file'> & { documentId?: string }) => ({
+          .map((doc: StoredDocument) => ({
             ...doc,
             documentId: doc.documentId || doc.id,
             file: undefined
@@ -103,7 +104,7 @@ const Home: NextPage = () => {
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
     const generatedId = globalThis.crypto?.randomUUID?.()
-      ?? `tab-${Date.now()}-${++fallbackDocumentCounter}`;
+      ?? `tab-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const newDoc: Document = {
       id: generatedId,
       documentId: doc.id,
