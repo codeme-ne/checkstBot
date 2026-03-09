@@ -55,7 +55,7 @@ const Home: NextPage = () => {
         // Older persisted documents stored the backend document id in `id`.
         const parsedDocs = JSON.parse(savedDocs)
           .filter(isStoredDocument)
-          .map((doc) => ({
+          .map((doc: Omit<Document, 'documentId' | 'file'> & { documentId?: string }) => ({
             ...doc,
             documentId: doc.documentId || doc.id,
             file: undefined
