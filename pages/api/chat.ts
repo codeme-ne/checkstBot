@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { ragSystem, ChatMessage } from '../../lib/rag';
 import { withCSRFProtection } from '../../lib/csrf';
 import { rateLimit } from '../../lib/rate-limit';
+import { ExplainSelectionPayload } from '../../lib/explain-selection';
 
 type Data = {
   response: string;
@@ -102,6 +103,23 @@ function extractExplainText(message: string): string | null {
   return explainText.length > 0 ? explainText : null;
 }
 
+function parseExplainSelectionPayload(value: unknown): ExplainSelectionPayload | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const payload = value as ExplainSelectionPayload;
+
+  if (typeof payload.selectedText !== 'string') {
+    return null;
+  }
+
+  return {
+    selectedText: payload.selectedText,
+    context: typeof payload.context === 'string' ? payload.context : undefined
+  };
+}
+
 async function chatHandler(
   req: NextApiRequest,
   res: NextApiResponse<Data | { error: string }>
@@ -112,7 +130,7 @@ async function chatHandler(
     return;
   }
 
-  const { message, chatHistory, documentId } = req.body;
+  const { message, chatHistory, documentId, explainSelection } = req.body;
 
   // Validate input
   if (!message || typeof message !== 'string') {
@@ -143,7 +161,8 @@ async function chatHandler(
   }
 
   try {
-    const explainText = extractExplainText(message);
+    const explainPayload = parseExplainSelectionPayload(explainSelection);
+    const explainText = explainPayload?.selectedText || extractExplainText(message);
     if (explainText) {
       if (explainText.length < 3) {
         res.status(400).json({ error: 'Bitte markieren Sie mehr Text für die Erklärung.' });
@@ -157,16 +176,16 @@ async function chatHandler(
         return;
       }
 
-      const explanation = await ragSystem.explainText(explainText, '', {
-        explanationStyle: 'detailed'
+      const explanation = await ragSystem.explainText(explainText, explainPayload?.context || '', {
+        explanationStyle: 'detailed',
+        documentId
       });
-      const conciseExplanation = toConciseAnswer(explanation);
       const explainSources = buildSourceLines(
         [{ metadata: { source: documentId || 'Aktuelles Dokument' } }],
         documentId
       );
       res.status(200).json({
-        response: formatAnswerMarkdown('Einfache Erklärung', conciseExplanation),
+        response: formatAnswerMarkdown('Erklärung zur markierten Stelle', explanation),
         sources: explainSources
       });
       return;

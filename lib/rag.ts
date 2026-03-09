@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 const USING_LOCAL_EMBEDDINGS = config.embedding.provider === 'local';
 const RELEVANCE_THRESHOLD = USING_LOCAL_EMBEDDINGS ? 0.5 : 0.65;
 const MIN_TOP_SCORE = USING_LOCAL_EMBEDDINGS ? 0.45 : 0.6;
+const MIN_EXPLANATION_CONTEXT_SIMILARITY = 0.35;
 const DOCUMENT_FILTER_FALLBACK_SOURCES = USING_LOCAL_EMBEDDINGS ? 3 : 2;
 const DOCUMENT_SEARCH_RETRY_DELAYS_MS = [150, 300];
 const DEFAULT_CHAT_MODEL = config.chat.model;
@@ -318,30 +319,43 @@ export class RAGSystem {
     options: {
       model?: string;
       explanationStyle?: 'simple' | 'detailed' | 'academic';
+      documentId?: string;
     } = {}
   ): Promise<string> {
     this.ensureInitialized();
 
-    const { model = DEFAULT_CHAT_MODEL, explanationStyle = 'detailed' } = options;
+    const { model = DEFAULT_CHAT_MODEL, explanationStyle = 'detailed', documentId } = options;
 
     try {
       const systemPrompt = this.createExplanationSystemPrompt(explanationStyle);
       const isTruncatedSelection = this.looksTruncatedSelection(selectedText);
-      const truncatedHint = isTruncatedSelection
-        ? '\nHinweis vom System: Der Zitat-Ausschnitt wirkt abgeschnitten.'
-        : '';
+      const retrievedContext = await this.retrieveExplanationContext(selectedText, documentId);
+      const hasAdditionalContext = Boolean(context.trim() || retrievedContext.trim());
+      const truncatedHint = isTruncatedSelection && !hasAdditionalContext
+        ? '\nHinweis vom System: Der Zitat-Ausschnitt wirkt abgeschnitten und es liegt kaum zusätzlicher Kontext vor.'
+        : isTruncatedSelection
+          ? '\nHinweis vom System: Der Zitat-Ausschnitt wirkt abgeschnitten. Nutze den bereitgestellten Dokumentkontext, um ihn vorsichtig einzuordnen.'
+          : '';
       const userPrompt = `Bitte erkläre das folgende Zitat hilfreich und klar.
 
-Zitat:
+Markierte Stelle:
 """
 ${selectedText}
 """
-${context ? `\nZusätzlicher Kontext:\n${context}` : ''}
+
+${context ? `Lokaler Kontext aus dem Dokument:\n"""\n${context}\n"""` : ''}
+
+${retrievedContext ? `Semantisch gefundener Dokumentkontext:\n${retrievedContext}` : ''}
+
+${documentId ? `Dokument: ${documentId}` : ''}
 ${truncatedHint}
 
 Wichtig:
 - Antworte in derselben Sprache wie das Zitat.
-- Wenn der Ausschnitt erkennbar abgeschnitten ist, sage das explizit.
+- Erkläre zuerst die Kernaussage der markierten Stelle.
+- Nutze danach den Dokumentkontext, um Begriffe, Ziel oder Einordnung zu präzisieren.
+- Wenn der Ausschnitt erkennbar abgeschnitten ist, erwähne das nur knapp und leite dann direkt in die Erklärung über.
+- Wenn wichtige Informationen im Kontext fehlen, benenne konkret, was offen bleibt.
 - Gib eine praktische, direkt nutzbare Einordnung.`;
 
       const response = await this.openai!.chat.completions.create({
@@ -354,16 +368,7 @@ Wichtig:
         max_tokens: 700,
       });
 
-      let answer = response.choices[0]?.message?.content || 'No explanation generated';
-
-      if (
-        isTruncatedSelection &&
-        !/Hinweis:\s*Der Ausschnitt ist wahrscheinlich unvollst[aä]ndig/i.test(answer)
-      ) {
-        answer = `> Hinweis: Der Ausschnitt ist wahrscheinlich unvollständig. Markiere 1-2 vollständige Sätze für eine präzisere Erklärung.\n\n${answer}`;
-      }
-
-      return answer;
+      return response.choices[0]?.message?.content || 'No explanation generated';
     } catch (error) {
       log.error('Error explaining text:', { error });
       const reason = error instanceof Error ? error.message : 'Unknown error';
@@ -463,23 +468,51 @@ Please provide a comprehensive answer based on the context provided above.`;
    */
   private createExplanationSystemPrompt(style: 'simple' | 'detailed' | 'academic'): string {
     const styleInstructions = {
-      simple: 'Halte es sehr verständlich und knapp.',
-      detailed: 'Erkläre präzise, praxisnah und gut strukturiert.',
-      academic: 'Erkläre fachlich präzise, aber weiterhin klar verständlich.'
+      simple: 'Halte es sehr verständlich, klar gegliedert und auf das Wesentliche fokussiert.',
+      detailed: 'Erkläre präzise, praxisnah, gut strukturiert und mit dokumentbezogener Einordnung.',
+      academic: 'Erkläre fachlich präzise, dokumentgeerdet und weiterhin klar verständlich.'
     };
 
     return `Du bist ein Lernassistent für Texterklärungen. ${styleInstructions[style]}
 
 Regeln:
-1. Antworte in derselben Sprache wie das Zitat.
-2. Übersetze nicht automatisch. Übersetzung nur, wenn explizit verlangt.
-3. Erkläre den Sinn des Zitats in einfacher Sprache und den praktischen Nutzen.
-4. Wenn der Ausschnitt abgeschnitten/fragmentiert wirkt (z. B. endet mitten im Wort), beginne die Kurzfassung mit:
-   "Hinweis: Der Ausschnitt ist wahrscheinlich unvollständig."
-5. Kein unnötiges Füllmaterial, keine langen Allgemeinplätze.
-6. Erfinde keine Herkunftsgeschichten oder Fakten, die nicht im Zitat stehen.
-7. Triff keine psychologischen oder situativen Annahmen, wenn sie nicht explizit im Zitat genannt sind.
-8. Schreibe höchstens drei kurze Sätze.`;
+1. Antworte ausschließlich auf Basis der markierten Stelle und des bereitgestellten Dokumentkontexts.
+2. Antworte in derselben Sprache wie das Zitat.
+3. Übersetze nicht automatisch. Übersetzung nur, wenn explizit verlangt.
+4. Strukturiere die Antwort, wenn genug Kontext vorhanden ist, in:
+   - **Kurz erklärt**
+   - **Im Dokumentkontext**
+   - **Warum das wichtig ist**
+5. Wenn der Ausschnitt fragmentiert wirkt, erwähne das knapp, aber fokussiere dich auf die bestmögliche Erklärung mit dem vorhandenen Kontext.
+6. Kein unnötiges Füllmaterial, keine langen Allgemeinplätze.
+7. Erfinde keine Herkunftsgeschichten oder Fakten, die nicht im bereitgestellten Kontext stehen.
+8. Triff keine psychologischen oder situativen Annahmen, wenn sie nicht explizit im Kontext genannt sind.
+9. Wenn Kontext fehlt, benenne die Lücke klar statt zu spekulieren.`;
+  }
+
+  private async retrieveExplanationContext(selectedText: string, documentId?: string): Promise<string> {
+    if (!documentId) {
+      return '';
+    }
+
+    const selectionEmbedding = await embeddingService.generateEmbedding(selectedText);
+    const results = await this.vectorDB.searchSimilar(
+      selectionEmbedding.embedding,
+      3,
+      { source: { $eq: documentId } }
+    );
+
+    const relevantResults = results
+      .filter(result => result.score >= MIN_EXPLANATION_CONTEXT_SIMILARITY)
+      .slice(0, 3);
+
+    if (relevantResults.length === 0) {
+      return '';
+    }
+
+    return relevantResults
+      .map((result, index) => `[${index + 1}] ${result.text}`)
+      .join('\n\n');
   }
 
   /**

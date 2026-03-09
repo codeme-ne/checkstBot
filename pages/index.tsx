@@ -3,9 +3,10 @@ import type { NextPage } from 'next';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import ChatInterface, { ChatInterfaceHandle } from '../components/ChatInterface';
+import ChatInterface, { ChatInterfaceHandle, QueuedChatMessage } from '../components/ChatInterface';
 import FileUpload, { FileUploadHandle } from '../components/FileUpload';
 import EnhancedDocumentViewer from '../components/EnhancedDocumentViewer';
+import { buildExplainDisplayMessage, extractSelectionContext } from '../lib/explain-selection';
 
 // Type definitions
 interface Document {
@@ -22,12 +23,10 @@ const MAX_EXPLAIN_SELECTION_CHARS = 2000;
 const Home: NextPage = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [activeDocument, setActiveDocument] = useState<string | null>(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [highlightMode, setHighlightMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
+  const [queuedMessage, setQueuedMessage] = useState<QueuedChatMessage | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
   const chatInterfaceRef = useRef<ChatInterfaceHandle>(null);
   const uploadDropzoneRef = useRef<FileUploadHandle>(null);
@@ -55,10 +54,18 @@ const Home: NextPage = () => {
     const explainText = normalizedText.length > MAX_EXPLAIN_SELECTION_CHARS
       ? `${normalizedText.slice(0, MAX_EXPLAIN_SELECTION_CHARS)}...`
       : normalizedText;
-    const message = `Bitte erkläre dieses Zitat präzise und verständlich:\n\n"${explainText}"`;
-    setQueuedMessage(message);
+    const context = activeDoc?.content
+      ? extractSelectionContext(activeDoc.content, explainText)
+      : '';
+
+    setQueuedMessage({
+      displayMessage: buildExplainDisplayMessage(explainText),
+      explainSelection: {
+        selectedText: explainText,
+        context
+      }
+    });
     setIsExplaining(true);
-    setSelectedText(''); // Clear selection to disable button
   };
 
   const handleQueueConsumed = () => {

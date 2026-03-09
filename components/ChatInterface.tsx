@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, us
 import MessageBubble from './MessageBubble';
 import { fetchCSRFToken, getCSRFTokenFromCookie } from '../lib/csrf-client';
 import { ChatStorageService } from '../lib/chat-storage';
+import { ExplainSelectionPayload } from '../lib/explain-selection';
 
 // Generate unique IDs to prevent collision risk
 const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -19,13 +20,32 @@ interface Message {
   sources?: string[];
 }
 
+export interface QueuedChatMessage {
+  displayMessage: string;
+  apiMessage?: string;
+  explainSelection?: ExplainSelectionPayload;
+}
+
+function createQueuedMessageKey(message: string | QueuedChatMessage): string {
+  if (typeof message === 'string') {
+    return message;
+  }
+
+  return [
+    message.displayMessage,
+    message.apiMessage || '',
+    message.explainSelection?.selectedText || '',
+    message.explainSelection?.context || ''
+  ].join('::');
+}
+
 export interface ChatInterfaceHandle {
-  sendMessage: (message: string) => void;
+  sendMessage: (message: string | QueuedChatMessage) => void;
 }
 
 interface ChatInterfaceProps {
   documentId: string;
-  queuedUserMessage?: string;
+  queuedUserMessage?: string | QueuedChatMessage;
   onQueueConsumed?: () => void;
 }
 
@@ -64,6 +84,7 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
   const [csrfToken, setCsrfToken] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastQueuedMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Fetch CSRF token on component mount
@@ -101,13 +122,24 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
   }, [inputMessage]);
 
   // Extract core message sending logic for reuse
-  const sendMessageInternal = useCallback(async (messageContent: string) => {
-    if (!messageContent.trim() || isLoading) return;
+  const sendMessageInternal = useCallback(async (messageInput: string | QueuedChatMessage) => {
+    const preparedMessage = typeof messageInput === 'string'
+      ? {
+          displayMessage: messageInput,
+          apiMessage: messageInput
+        }
+      : {
+          displayMessage: messageInput.displayMessage,
+          apiMessage: messageInput.apiMessage || messageInput.displayMessage,
+          explainSelection: messageInput.explainSelection
+        };
+
+    if (!preparedMessage.displayMessage.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: generateUniqueId(),
       role: 'user',
-      content: messageContent,
+      content: preparedMessage.displayMessage,
       timestamp: new Date().toISOString()
     };
 
@@ -129,9 +161,10 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
           'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({
-          message: messageContent,
+          message: preparedMessage.apiMessage,
           chatHistory: updatedMessages!,
-          documentId: documentId
+          documentId: documentId,
+          explainSelection: preparedMessage.explainSelection
         }),
       });
 
@@ -211,14 +244,26 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
 
   // Expose programmatic message sending via ref
   useImperativeHandle(ref, () => ({
-    sendMessage: (message: string) => {
+    sendMessage: (message: string | QueuedChatMessage) => {
       sendMessageInternal(message);
     }
   }), [sendMessageInternal]);
 
   // Handle queued messages
   useEffect(() => {
+    if (!queuedUserMessage) {
+      lastQueuedMessageRef.current = null;
+      return;
+    }
+
+    const queueKey = createQueuedMessageKey(queuedUserMessage);
+
+    if (lastQueuedMessageRef.current === queueKey) {
+      return;
+    }
+
     if (queuedUserMessage && !isLoading) {
+      lastQueuedMessageRef.current = queueKey;
       sendMessageInternal(queuedUserMessage);
       onQueueConsumed?.();
     }

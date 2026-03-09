@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChatInterface from '../../components/ChatInterface';
 
@@ -22,11 +22,14 @@ jest.mock('../../lib/csrf-client', () => ({
   getCSRFTokenFromCookie: jest.fn().mockReturnValue('mock-csrf-token')
 }));
 
+global.fetch = jest.fn();
+
 describe('ChatInterface', () => {
   beforeEach(() => {
     // Clear localStorage and mock DOM methods
     localStorage.clear();
     Element.prototype.scrollIntoView = jest.fn();
+    (global.fetch as jest.Mock).mockReset();
   });
 
   afterEach(() => {
@@ -83,5 +86,42 @@ describe('ChatInterface', () => {
     fireEvent.keyPress(input, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     expect(screen.getByText('Test question')).toBeInTheDocument();
+  });
+
+  it('uses structured explain payloads for queued explain requests', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify({ response: 'Erklärung aus dem Backend' }))
+    });
+
+    render(
+      <ChatInterface
+        documentId="test-doc"
+        queuedUserMessage={{
+          displayMessage: 'Erkläre bitte die markierte Stelle im Dokument.',
+          explainSelection: {
+            selectedText: 'lyses on acne vulgaris treatment effectiveness?',
+            context: 'What are the largest systematic reviews or meta-analyses on acne vulgaris treatment effectiveness?'
+          }
+        } as any}
+      />
+    );
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    const [, request] = (global.fetch as jest.Mock).mock.calls[0];
+    const parsedBody = JSON.parse((request as RequestInit).body as string);
+
+    expect(parsedBody.message).toBe('Erkläre bitte die markierte Stelle im Dokument.');
+    expect(parsedBody.explainSelection).toEqual({
+      selectedText: 'lyses on acne vulgaris treatment effectiveness?',
+      context: 'What are the largest systematic reviews or meta-analyses on acne vulgaris treatment effectiveness?'
+    });
+
+    expect(
+      screen.getByText('Erkläre bitte die markierte Stelle im Dokument.')
+    ).toBeInTheDocument();
   });
 });
