@@ -38,6 +38,7 @@ const Home: NextPage = () => {
     try {
       const savedDocs = localStorage.getItem('chat_documents');
       if (savedDocs) {
+        // Older persisted documents stored the backend document id in `id`.
         const parsedDocs = JSON.parse(savedDocs).map((doc: Document & { documentId?: string }) => ({
           ...doc,
           documentId: doc.documentId || doc.id,
@@ -86,7 +87,7 @@ const Home: NextPage = () => {
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
     const generatedId = globalThis.crypto?.randomUUID?.()
-      ?? `${doc.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      ?? `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newDoc: Document = {
       id: generatedId,
       documentId: doc.id,

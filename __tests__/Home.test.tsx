@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import Home from '../pages/index';
 
-const uploadQueue = [
+const mockUploads = [
   { id: 'shared-backend-id', title: 'Erstes PDF', content: 'Erster Inhalt' },
   { id: 'shared-backend-id', title: 'Zweites PDF', content: 'Zweiter Inhalt' },
 ];
@@ -15,7 +15,7 @@ jest.mock('../components/FileUpload', () => {
         <button
           type="button"
           onClick={() => {
-            const nextUpload = uploadQueue.shift();
+            const nextUpload = mockUploads.shift();
             if (nextUpload) {
               props.onUploadComplete(nextUpload);
             }
@@ -43,7 +43,7 @@ jest.mock('../components/ChatInterface', () => {
 
 describe('Home', () => {
   beforeEach(() => {
-    uploadQueue.splice(0, uploadQueue.length,
+    mockUploads.splice(0, mockUploads.length,
       { id: 'shared-backend-id', title: 'Erstes PDF', content: 'Erster Inhalt' },
       { id: 'shared-backend-id', title: 'Zweites PDF', content: 'Zweiter Inhalt' }
     );
