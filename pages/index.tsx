@@ -10,6 +10,7 @@ import EnhancedDocumentViewer from '../components/EnhancedDocumentViewer';
 // Type definitions
 interface Document {
   id: string;
+  documentId: string;
   title: string;
   content: string;
   type: string;
@@ -17,7 +18,23 @@ interface Document {
   file?: File;
 }
 
+type StoredDocument = Omit<Document, 'documentId' | 'file'> & { documentId?: string };
+
 const MAX_EXPLAIN_SELECTION_CHARS = 2000;
+
+const isStoredDocument = (doc: unknown): doc is StoredDocument => {
+  if (!doc || typeof doc !== 'object') {
+    return false;
+  }
+
+  const candidate = doc as Record<string, unknown>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.type === 'string'
+    && typeof candidate.uploadDate === 'string'
+    && typeof candidate.content === 'string'
+    && (candidate.documentId === undefined || typeof candidate.documentId === 'string');
+};
 
 const Home: NextPage = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -37,7 +54,14 @@ const Home: NextPage = () => {
     try {
       const savedDocs = localStorage.getItem('chat_documents');
       if (savedDocs) {
-        const parsedDocs = JSON.parse(savedDocs);
+        // Older persisted documents stored the backend document id in `id`.
+        const parsedDocs = JSON.parse(savedDocs)
+          .filter(isStoredDocument)
+          .map((doc: StoredDocument) => ({
+            ...doc,
+            documentId: doc.documentId || doc.id,
+            file: undefined
+          }));
         setDocuments(parsedDocs);
         if (parsedDocs.length > 0) {
           setActiveDocument((current) => current ?? parsedDocs[0].id);
@@ -80,8 +104,10 @@ const Home: NextPage = () => {
 
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
+    const generatedId = globalThis.crypto.randomUUID();
     const newDoc: Document = {
-      id: doc.id, // Use document ID from API (filename)
+      id: generatedId,
+      documentId: doc.id,
       title: doc.title,
       content: doc.content || '[Content stored in vector database]',
       type: doc.file?.type || 'uploaded',
@@ -95,7 +121,9 @@ const Home: NextPage = () => {
     setActiveDocument(newDoc.id);
 
     try {
-      localStorage.setItem('chat_documents', JSON.stringify(updatedDocs));
+      localStorage.setItem('chat_documents', JSON.stringify(
+        updatedDocs.map(({ file, ...storedDoc }) => storedDoc)
+      ));
     } catch (error) {
       console.error('Failed to save documents to storage', error);
     }
@@ -116,7 +144,9 @@ const Home: NextPage = () => {
 
     // Save to localStorage
     try {
-      localStorage.setItem('chat_documents', JSON.stringify(updatedDocs));
+      localStorage.setItem('chat_documents', JSON.stringify(
+        updatedDocs.map(({ file, ...storedDoc }) => storedDoc)
+      ));
     } catch (error) {
       console.error('Failed to save documents to storage', error);
     }
@@ -220,7 +250,7 @@ const Home: NextPage = () => {
           ) : (
             <ChatInterface
               ref={chatInterfaceRef}
-              documentId={activeDocument}
+              documentId={activeDoc?.documentId || activeDocument}
               queuedUserMessage={queuedMessage || undefined}
               onQueueConsumed={handleQueueConsumed}
             />

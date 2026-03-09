@@ -1,0 +1,34 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import fs from 'fs/promises';
+
+let cachedWorkerSource: string | null = null;
+const IMMUTABLE_CACHE_SECONDS = 365 * 24 * 60 * 60;
+
+const resolveWorkerPath = () => {
+  try {
+    return require.resolve('pdfjs-dist/build/pdf.worker.min.mjs');
+  } catch (primaryError) {
+    try {
+      return require.resolve('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+    } catch (legacyError) {
+      console.error('Failed to resolve legacy PDF worker source:', legacyError);
+      throw primaryError;
+    }
+  }
+};
+
+export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+  try {
+    if (!cachedWorkerSource) {
+      const workerPath = resolveWorkerPath();
+      cachedWorkerSource = await fs.readFile(workerPath, 'utf8');
+    }
+
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', `public, max-age=${IMMUTABLE_CACHE_SECONDS}, immutable`);
+    return res.status(200).send(cachedWorkerSource);
+  } catch (error) {
+    console.error('Failed to load PDF worker source:', error);
+    return res.status(500).json({ error: 'PDF worker unavailable' });
+  }
+}
