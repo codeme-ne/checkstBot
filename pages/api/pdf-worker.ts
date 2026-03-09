@@ -3,10 +3,25 @@ import fs from 'fs/promises';
 
 let cachedWorkerSource: string | null = null;
 
+const resolveWorkerPath = () => {
+  for (const path of [
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    'pdfjs-dist/legacy/build/pdf.worker.min.mjs'
+  ]) {
+    try {
+      return require.resolve(path);
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error('Unable to resolve PDF.js worker source');
+};
+
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   try {
     if (!cachedWorkerSource) {
-      const workerPath = require.resolve('pdfjs-dist/build/pdf.worker.min.mjs');
+      const workerPath = resolveWorkerPath();
       cachedWorkerSource = await fs.readFile(workerPath, 'utf8');
     }
 

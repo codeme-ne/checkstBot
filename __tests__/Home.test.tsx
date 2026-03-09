@@ -1,10 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import Home from '../pages/index';
 
-const mockUploads = [
+const createMockUploads = () => [
   { id: 'shared-backend-id', title: 'Erstes PDF', content: 'Erster Inhalt' },
   { id: 'shared-backend-id', title: 'Zweites PDF', content: 'Zweiter Inhalt' },
 ];
+
+let mockUploads = createMockUploads();
 
 jest.mock('../components/FileUpload', () => {
   const React = require('react');
@@ -43,10 +45,7 @@ jest.mock('../components/ChatInterface', () => {
 
 describe('Home', () => {
   beforeEach(() => {
-    mockUploads.splice(0, mockUploads.length,
-      { id: 'shared-backend-id', title: 'Erstes PDF', content: 'Erster Inhalt' },
-      { id: 'shared-backend-id', title: 'Zweites PDF', content: 'Zweiter Inhalt' }
-    );
+    mockUploads = createMockUploads();
     localStorage.clear();
   });
 

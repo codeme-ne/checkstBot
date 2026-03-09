@@ -19,6 +19,20 @@ interface Document {
 }
 
 const MAX_EXPLAIN_SELECTION_CHARS = 2000;
+let fallbackDocumentCounter = 0;
+
+const isStoredDocument = (doc: unknown): doc is Omit<Document, 'documentId' | 'file'> & { documentId?: string } => {
+  if (!doc || typeof doc !== 'object') {
+    return false;
+  }
+
+  const candidate = doc as Record<string, unknown>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.type === 'string'
+    && typeof candidate.uploadDate === 'string'
+    && typeof candidate.content === 'string';
+};
 
 const Home: NextPage = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -39,11 +53,13 @@ const Home: NextPage = () => {
       const savedDocs = localStorage.getItem('chat_documents');
       if (savedDocs) {
         // Older persisted documents stored the backend document id in `id`.
-        const parsedDocs = JSON.parse(savedDocs).map((doc: Document & { documentId?: string }) => ({
-          ...doc,
-          documentId: doc.documentId || doc.id,
-          file: undefined
-        }));
+        const parsedDocs = JSON.parse(savedDocs)
+          .filter(isStoredDocument)
+          .map((doc) => ({
+            ...doc,
+            documentId: doc.documentId || doc.id,
+            file: undefined
+          }));
         setDocuments(parsedDocs);
         if (parsedDocs.length > 0) {
           setActiveDocument((current) => current ?? parsedDocs[0].id);
@@ -87,7 +103,7 @@ const Home: NextPage = () => {
   // Handle successful file upload
   const handleUploadComplete = (doc: { id: string; title: string; content?: string; file?: File }) => {
     const generatedId = globalThis.crypto?.randomUUID?.()
-      ?? `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      ?? `tab-${Date.now()}-${++fallbackDocumentCounter}`;
     const newDoc: Document = {
       id: generatedId,
       documentId: doc.id,
