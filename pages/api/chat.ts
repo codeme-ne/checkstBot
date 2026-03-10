@@ -84,9 +84,14 @@ ${answer}`;
 }
 
 function extractExplainText(message: string): string | null {
-  const prefixPattern = /^Bitte erkläre dieses Zitat präzise und verständlich:\s*/i;
+  const prefixPatterns = [
+    /^Bitte erklaere dieses Zitat praezise und verstaendlich:\s*/i,
+    /^Bitte erkläre dieses Zitat präzise und verständlich:\s*/i,
+    /^Bitte erklÃ¤re dieses Zitat prÃ¤zise und verstÃ¤ndlich:\s*/i,
+  ];
+  const prefixPattern = prefixPatterns.find((pattern) => pattern.test(message));
 
-  if (!prefixPattern.test(message)) {
+  if (!prefixPattern) {
     return null;
   }
 

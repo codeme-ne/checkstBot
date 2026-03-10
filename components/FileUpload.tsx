@@ -6,7 +6,7 @@ interface FileUploadProps {
   onUploadComplete: (document: { id: string; title: string; file?: File }) => void;
   onUploadStart?: () => void;
   onUploadError?: (error: string) => void;
-  variant?: 'button' | 'dropzone';
+  variant?: 'button' | 'dropzone' | 'hidden';
 }
 
 export interface FileUploadHandle {
@@ -173,6 +173,19 @@ const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({
       }
     }
   };
+
+  if (variant === 'hidden') {
+    return (
+      <input
+        id={inputId}
+        type="file"
+        ref={fileInputRef}
+        accept=".pdf,.docx,.txt,.md"
+        style={hiddenFileInputStyle}
+        onChange={handleFileUpload}
+      />
+    );
+  }
 
   if (variant === 'button') {
     return (

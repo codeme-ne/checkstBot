@@ -72,6 +72,7 @@ coverage/
 *.lcov
 playwright-report/
 test-results/
+.playwright-cli/
 
 # Dependency lock files (keep package-lock.json but ignore others)
 yarn.lock
