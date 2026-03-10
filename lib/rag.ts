@@ -33,6 +33,8 @@ export interface ChatMessage {
 export class RAGSystem {
   private vectorDB: VectorDatabase;
   private openai: OpenAI | null = null;
+  private readonly SUMMARY_CHUNK_SIZE = Math.max(config.chunking.size * 5, 4500);
+  private readonly SUMMARY_CHUNK_OVERLAP = Math.max(config.chunking.overlap * 2, 300);
 
   constructor(vectorDB?: VectorDatabase) {
     // Use provided vectorDB or create default instance
@@ -418,6 +420,40 @@ Wichtig:
     }
   }
 
+  async summarizeDocumentContent(title: string, content: string): Promise<string> {
+    this.ensureInitialized();
+
+    const normalizedContent = this.normalizeSummaryContent(content);
+    if (!normalizedContent) {
+      throw new Error('No document content available for summary generation');
+    }
+
+    const summaryChunks = this.createSummaryChunks(normalizedContent);
+
+    try {
+      if (summaryChunks.length === 1) {
+        return this.generateStructuredSummaryMarkdown(title, summaryChunks[0]);
+      }
+
+      const partialSummaries: string[] = [];
+      for (let index = 0; index < summaryChunks.length; index++) {
+        const partialSummary = await this.generateStructuredSummaryMarkdown(title, summaryChunks[index], {
+          partNumber: index + 1,
+          totalParts: summaryChunks.length,
+        });
+        partialSummaries.push(partialSummary);
+      }
+
+      return this.generateStructuredSummaryMarkdown(title, partialSummaries.join('\n\n'), {
+        synthesis: true,
+        totalParts: partialSummaries.length,
+      });
+    } catch (error) {
+      log.error('Error generating structured document summary:', { error, title });
+      throw new Error('Failed to generate document summary');
+    }
+  }
+
   /**
    * Create system prompt for RAG queries (document-only grounding)
    */
@@ -501,6 +537,152 @@ Focus on:
 - Actionable insights or recommendations
 
 Structure your summary for academic and research purposes.`;
+  }
+
+  private normalizeSummaryContent(content: string): string {
+    return content
+      .replace(/\r\n/g, '\n')
+      .replace(/\u0000/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private createSummaryChunks(content: string): string[] {
+    if (content.length <= this.SUMMARY_CHUNK_SIZE) {
+      return [content];
+    }
+
+    const paragraphs = content.split(/\n\s*\n/).filter(Boolean);
+    const chunks: string[] = [];
+    let currentChunk = '';
+
+    const pushChunk = (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed) {
+        chunks.push(trimmed);
+      }
+    };
+
+    for (const paragraph of paragraphs) {
+      const normalizedParagraph = paragraph.trim();
+      if (!normalizedParagraph) {
+        continue;
+      }
+
+      if (normalizedParagraph.length > this.SUMMARY_CHUNK_SIZE) {
+        if (currentChunk) {
+          pushChunk(currentChunk);
+          currentChunk = '';
+        }
+
+        let cursor = 0;
+        while (cursor < normalizedParagraph.length) {
+          const sliceEnd = Math.min(cursor + this.SUMMARY_CHUNK_SIZE, normalizedParagraph.length);
+          const rawSlice = normalizedParagraph.slice(cursor, sliceEnd);
+          const sentenceBoundary = rawSlice.lastIndexOf('. ');
+          const safeSlice =
+            sliceEnd < normalizedParagraph.length && sentenceBoundary > this.SUMMARY_CHUNK_SIZE * 0.45
+              ? rawSlice.slice(0, sentenceBoundary + 1)
+              : rawSlice;
+
+          pushChunk(safeSlice);
+          cursor += Math.max(safeSlice.length - this.SUMMARY_CHUNK_OVERLAP, 1);
+        }
+
+        continue;
+      }
+
+      const candidateChunk = currentChunk
+        ? `${currentChunk}\n\n${normalizedParagraph}`
+        : normalizedParagraph;
+
+      if (candidateChunk.length > this.SUMMARY_CHUNK_SIZE) {
+        pushChunk(currentChunk);
+        currentChunk = normalizedParagraph;
+      } else {
+        currentChunk = candidateChunk;
+      }
+    }
+
+    pushChunk(currentChunk);
+    return chunks.length > 0 ? chunks : [content];
+  }
+
+  private async generateStructuredSummaryMarkdown(
+    title: string,
+    sourceContent: string,
+    options: {
+      partNumber?: number;
+      totalParts?: number;
+      synthesis?: boolean;
+    } = {}
+  ): Promise<string> {
+    const systemPrompt = this.createStructuredSummaryPrompt(options.synthesis === true);
+    const segmentLabel = options.partNumber && options.totalParts
+      ? `Section ${options.partNumber} of ${options.totalParts}`
+      : 'Full document';
+    const userPrompt = options.synthesis
+      ? `Document title: ${title}
+
+Combine the partial summaries below into one clean Markdown summary for the complete document.
+
+Requirements:
+- Keep 4 to 6 sections.
+- Use "##" headings only.
+- Each section must contain 3 to 5 bullet points.
+- Keep the language of the document.
+- Remove repetition and contradictions.
+- Do not add an introduction or conclusion.
+
+Partial summaries:
+${sourceContent}`
+      : `Document title: ${title}
+Coverage: ${segmentLabel}
+
+Create a structured Markdown summary from this document content.
+
+Requirements:
+- Keep the language of the document.
+- Use 3 to 5 "##" sections.
+- Each section must contain 3 to 5 bullet points.
+- Focus on concrete concepts, definitions, constraints, and takeaways.
+- Do not add an introduction, conclusion, or meta commentary.
+
+Document content:
+${sourceContent}`;
+
+    const response = await this.openai!.chat.completions.create({
+      model: DEFAULT_CHAT_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.2,
+      max_tokens: options.synthesis ? 1400 : 900,
+    });
+
+    return response.choices[0]?.message?.content?.trim() || '';
+  }
+
+  private createStructuredSummaryPrompt(isSynthesis: boolean): string {
+    if (isSynthesis) {
+      return `You are a document summarization assistant.
+
+Return Markdown only.
+Keep the output faithful to the provided summaries.
+Use the same language as the source material.
+Favor crisp headings and dense bullet points over prose paragraphs.
+Do not invent facts or context that is not present.`;
+    }
+
+    return `You are a document summarization assistant.
+
+Return Markdown only.
+Use the same language as the source material.
+Produce sectioned notes that are easy to scan.
+Prefer "##" headings and bullet lists.
+Do not add filler, prefaces, or conclusions.
+Do not invent facts or context that is not present.`;
   }
 
   /**

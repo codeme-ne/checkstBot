@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { CalendarClock, Download, FileText, X } from 'lucide-react';
 import MarkdownViewer from './MarkdownViewer';
-import TextViewer from './TextViewer';
 import SelectionTooltip from './SelectionTooltip';
+import TextViewer from './TextViewer';
+import type { PDFViewerState } from './PDFViewer';
 
-// Dynamically import PDFViewer to avoid SSR issues
 const PDFViewer = dynamic(() => import('./PDFViewer'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center p-8">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-gray-500">PDF wird geladen...</p>
-      </div>
+    <div className="viewer-loading">
+      <div className="viewer-loading__spinner" />
+      <p>PDF wird geladen...</p>
     </div>
-  )
+  ),
 });
 
 interface Document {
@@ -26,58 +27,82 @@ interface Document {
   uploadDate: string;
 }
 
+interface SummaryState {
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  markdown?: string;
+  error?: string;
+  generatedAt?: string;
+}
+
 interface EnhancedDocumentViewerProps {
   document: Document | null;
+  viewerMode?: 'document' | 'summary';
+  summaryState?: SummaryState;
   onExplain?: (text: string) => void;
-  onClose?: () => void;
+  onDownload?: () => void;
+  onCloseDocument?: () => void;
+  pdfViewerState?: PDFViewerState;
+  onPDFViewerStateChange?: (nextState: Partial<PDFViewerState>) => void;
+  downloadDisabled?: boolean;
 }
 
 const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
   document,
+  viewerMode = 'document',
+  summaryState = { status: 'idle' },
   onExplain,
-  onClose
+  onDownload,
+  onCloseDocument,
+  pdfViewerState = { pageNumber: 1, scale: 1, searchQuery: '', activeMatchIndex: -1 },
+  onPDFViewerStateChange,
+  downloadDisabled = false,
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
 
-  const handleTextSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
+  useEffect(() => {
+    if (viewerMode !== 'document') {
       setShowTooltip(false);
       return;
     }
 
-    const text = selection.toString().trim();
-    if (text.length > 3) {
-      setSelectedText(text);
+    const handleTextSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setShowTooltip(false);
+        return;
+      }
 
-      // Get selection position
+      const text = selection.toString().trim();
+      if (text.length <= 3) {
+        setShowTooltip(false);
+        return;
+      }
+
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const viewerRect = viewerRef.current?.getBoundingClientRect();
-
-      if (viewerRect) {
-        setTooltipPosition({
-          x: rect.left - viewerRect.left + rect.width / 2,
-          y: rect.top - viewerRect.top
-        });
-        setShowTooltip(true);
+      if (!viewerRect) {
+        setShowTooltip(false);
+        return;
       }
-    } else {
-      setShowTooltip(false);
-    }
-  };
 
-  useEffect(() => {
-    const handleMouseUp = () => {
-      // Small delay to let selection complete
-      setTimeout(handleTextSelection, 10);
+      setSelectedText(text);
+      setTooltipPosition({
+        x: rect.left - viewerRect.left + rect.width / 2,
+        y: rect.top - viewerRect.top,
+      });
+      setShowTooltip(true);
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (viewerRef.current && !viewerRef.current.contains(e.target as Node)) {
+    const handleMouseUp = () => {
+      window.setTimeout(handleTextSelection, 10);
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (viewerRef.current && !viewerRef.current.contains(event.target as Node)) {
         setShowTooltip(false);
       }
     };
@@ -89,293 +114,450 @@ const EnhancedDocumentViewer: React.FC<EnhancedDocumentViewerProps> = ({
       window.document.removeEventListener('mouseup', handleMouseUp);
       window.document.removeEventListener('click', handleClickOutside);
     };
-  }, []);
+  }, [viewerMode]);
+
+  const documentMeta = useMemo(() => {
+    if (!document) {
+      return null;
+    }
+
+    const uploadLabel = new Date(document.uploadDate).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return {
+      uploadLabel,
+      sizeLabel: document.file ? `${(document.file.size / 1024).toFixed(1)} KB` : null,
+    };
+  }, [document]);
 
   const handleExplain = () => {
-    if (onExplain && selectedText) {
-      onExplain(selectedText);
-      setShowTooltip(false);
-      // Clear selection
-      window.getSelection()?.removeAllRanges();
+    if (!onExplain || !selectedText) {
+      return;
     }
+
+    onExplain(selectedText);
+    setShowTooltip(false);
+    window.getSelection()?.removeAllRanges();
   };
 
   if (!document) {
     return (
       <div className="document-viewer-empty">
-        <div className="empty-state">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14,2 14,8 20,8"></polyline>
-          </svg>
-          <h3>Kein Dokument ausgewählt</h3>
-          <p>Wählen Sie ein Dokument aus der Liste aus oder laden Sie ein neues hoch.</p>
+        <div className="document-viewer-empty__card">
+          <FileText size={42} />
+          <h3>Kein Dokument ausgewaehlt</h3>
+          <p>Waehle ein Dokument aus den Tabs aus oder lade ein neues Dokument hoch.</p>
         </div>
+
         <style jsx>{`
           .document-viewer-empty {
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100%;
-            background: #141416;
-            border-radius: 10px;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.06);
           }
 
-          .empty-state {
+          .document-viewer-empty__card {
             text-align: center;
-            color: #71717a;
+            color: #60594d;
           }
 
-          .empty-state svg {
-            margin: 0 auto 1rem;
-            opacity: 0.4;
-            color: #32B8C6;
+          .document-viewer-empty__card h3 {
+            margin: 16px 0 8px;
+            color: #29251f;
           }
 
-          .empty-state h3 {
-            font-size: 1.125rem;
-            margin-bottom: 0.5rem;
-            color: #f5f5f5;
-          }
-
-          .empty-state p {
-            font-size: 0.875rem;
-            color: #71717a;
+          .document-viewer-empty__card p {
+            margin: 0;
           }
         `}</style>
       </div>
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getFileIcon = (type: string) => {
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('word') || type.includes('docx')) return '📝';
-    if (type.includes('text/plain') || type === 'txt') return '📃';
-    if (type.includes('markdown') || type === 'md') return '📑';
-    return '📋';
-  };
-
   const renderDocumentContent = () => {
-    // If we have a file object, render based on its type
     if (document.file) {
       const fileType = document.file.type || document.type;
 
       if (fileType === 'application/pdf') {
-        return <PDFViewer file={document.file} />;
-      } else if (fileType === 'text/markdown' || document.file.name.endsWith('.md')) {
+        return (
+          <PDFViewer
+            file={document.file}
+            state={pdfViewerState}
+            onStateChange={onPDFViewerStateChange}
+            onDownload={onDownload}
+            onCloseDocument={onCloseDocument}
+            downloadDisabled={downloadDisabled}
+          />
+        );
+      }
+
+      if (fileType === 'text/markdown' || document.file.name.endsWith('.md')) {
         return <MarkdownViewer file={document.file} />;
-      } else if (fileType === 'text/plain' || document.file.name.endsWith('.txt')) {
+      }
+
+      if (fileType === 'text/plain' || document.file.name.endsWith('.txt')) {
         return <TextViewer file={document.file} />;
       }
     }
 
-    // Fallback to content if no file
     if (document.content && document.content !== '[Content stored in vector database]') {
-      // Try to detect content type
-      if (document.type === 'markdown' || document.type === 'md') {
+      if (document.type === 'markdown' || document.type === 'md' || document.title.endsWith('.md')) {
         return <MarkdownViewer content={document.content} />;
       }
+
       return <TextViewer content={document.content} />;
     }
 
-    // Show vector database message
     return (
-      <div className="content-info">
-        <div className="info-card">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <h3>Dokument bereit für Chat</h3>
-          <p>
-            Der Inhalt dieses Dokuments wurde erfolgreich verarbeitet und in unserer Vektordatenbank gespeichert.
-            Sie können jetzt Fragen zu diesem Dokument stellen.
-          </p>
+      <div className="document-fallback">
+        <FileText size={40} />
+        <h3>Dokument bereit fuer den Assistenten</h3>
+        <p>
+          Der Volltext ist in dieser Sitzung nicht lokal verfuegbar. Der Assistent kann
+          dennoch mit den gespeicherten Dokumentdaten arbeiten.
+        </p>
+      </div>
+    );
+  };
+
+  const renderSummary = () => {
+    if (summaryState.status === 'loading' || summaryState.status === 'idle') {
+      return (
+        <div className="summary-state">
+          <div className="viewer-loading__spinner" />
+          <h3>Original Summary wird erstellt</h3>
+          <p>Das komplette Dokument wird in Abschnitte verdichtet und als Reader-Ansicht aufgebaut.</p>
         </div>
+      );
+    }
+
+    if (summaryState.status === 'error') {
+      return (
+        <div className="summary-state summary-state--error">
+          <h3>Zusammenfassung nicht verfuegbar</h3>
+          <p>{summaryState.error}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="summary-reader" data-testid="document-summary">
+        <div className="summary-divider">
+          <span>Original Summary</span>
+        </div>
+
+        <div className="summary-reader__body">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h2({ children }) {
+                return <h2 className="summary-markdown__heading">{children}</h2>;
+              },
+              ul({ children }) {
+                return <ul className="summary-markdown__list">{children}</ul>;
+              },
+              li({ children }) {
+                return <li className="summary-markdown__item">{children}</li>;
+              },
+              p({ children }) {
+                return <p className="summary-markdown__paragraph">{children}</p>;
+              },
+            }}
+          >
+            {summaryState.markdown || ''}
+          </ReactMarkdown>
+        </div>
+
+        {summaryState.generatedAt && (
+          <p className="summary-reader__meta">
+            Aktualisiert am {new Date(summaryState.generatedAt).toLocaleString('de-DE')}
+          </p>
+        )}
       </div>
     );
   };
 
   return (
     <div className="enhanced-document-viewer">
-      <div className="document-header">
-        <div className="document-info">
-          <div className="document-icon">{getFileIcon(document.type)}</div>
-          <div>
-            <h2 className="document-title">{document.title}</h2>
-            <div className="document-meta">
-              <span>Hochgeladen: {formatDate(document.uploadDate)}</span>
-              {document.file && (
-                <>
-                  <span className="separator">•</span>
-                  <span>Größe: {(document.file.size / 1024).toFixed(1)} KB</span>
-                </>
+      {viewerMode === 'document' ? (
+        <>
+          <div className="document-header">
+            <div className="document-header__primary">
+              <div className="document-header__icon">
+                <FileText size={20} />
+              </div>
+
+              <div className="document-header__copy">
+                <h2>{document.title}</h2>
+                <div className="document-header__meta">
+                  <span>
+                    <CalendarClock size={13} />
+                    <span>Hochgeladen: {documentMeta?.uploadLabel}</span>
+                  </span>
+                  {documentMeta?.sizeLabel && <span>Groesse: {documentMeta.sizeLabel}</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="document-header__actions">
+              {onDownload && (
+                <button
+                  type="button"
+                  className="document-header__button"
+                  onClick={onDownload}
+                  disabled={downloadDisabled}
+                  aria-label="Dokument herunterladen"
+                >
+                  <Download size={16} />
+                </button>
+              )}
+
+              {onCloseDocument && (
+                <button
+                  type="button"
+                  className="document-header__button"
+                  onClick={onCloseDocument}
+                  aria-label="Dokument schliessen"
+                >
+                  <X size={16} />
+                </button>
               )}
             </div>
           </div>
+
+          <div className="document-body" ref={viewerRef}>
+            {renderDocumentContent()}
+
+            {showTooltip && tooltipPosition && (
+              <SelectionTooltip
+                position={tooltipPosition}
+                selectedText={selectedText}
+                onExplain={handleExplain}
+                onClose={() => setShowTooltip(false)}
+              />
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="summary-body" ref={viewerRef}>
+          {renderSummary()}
         </div>
-        {onClose && (
-          <button onClick={onClose} className="close-button" aria-label="Schließen">
-            ✕
-          </button>
-        )}
-      </div>
-
-      <div className="document-body" ref={viewerRef}>
-        {renderDocumentContent()}
-
-        {showTooltip && tooltipPosition && (
-          <SelectionTooltip
-            position={tooltipPosition}
-            selectedText={selectedText}
-            onExplain={handleExplain}
-            onClose={() => setShowTooltip(false)}
-          />
-        )}
-      </div>
+      )}
 
       <style jsx>{`
         .enhanced-document-viewer {
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: #141416;
-          border-radius: 10px;
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 252, 246, 0.84);
         }
 
         .document-header {
-          padding: 1rem 1.25rem;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: center;
-          background: #1a1a1c;
+          gap: 16px;
+          padding: 18px 20px;
+          border-bottom: 1px solid rgba(34, 29, 20, 0.12);
+          background: rgba(255, 251, 245, 0.88);
         }
 
-        .document-info {
+        .document-header__primary {
           display: flex;
           align-items: center;
-          gap: 0.875rem;
+          gap: 14px;
+          min-width: 0;
         }
 
-        .document-icon {
-          font-size: 2rem;
-          line-height: 1;
-        }
-
-        .document-title {
-          font-size: 1rem;
-          font-weight: 500;
-          color: #f5f5f5;
-          margin: 0 0 0.125rem 0;
-        }
-
-        .document-meta {
-          font-size: 0.75rem;
-          color: #32B8C6;
+        .document-header__icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          background: rgba(0, 0, 0, 0.05);
+          color: #29251f;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          justify-content: center;
+          flex-shrink: 0;
         }
 
-        .separator {
-          color: #52525b;
+        .document-header__copy {
+          min-width: 0;
         }
 
-        .close-button {
-          background: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          font-size: 1.25rem;
-          color: #71717a;
+        .document-header__copy h2 {
+          margin: 0 0 6px;
+          font-size: 1.12rem;
+          color: #25211a;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .document-header__meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px 18px;
+          color: #756d61;
+          font-size: 0.82rem;
+        }
+
+        .document-header__meta span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .document-header__actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .document-header__button {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          border: 1px solid rgba(34, 29, 20, 0.12);
+          background: rgba(255, 255, 255, 0.84);
+          color: #2b2620;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-          padding: 0.375rem 0.5rem;
-          border-radius: 6px;
-          transition: all 0.2s;
         }
 
-        .close-button:hover {
-          background: rgba(255, 84, 89, 0.1);
-          border-color: rgba(255, 84, 89, 0.3);
-          color: #ff5459;
+        .document-header__button:hover:not(:disabled) {
+          background: #ffffff;
         }
 
-        .document-body {
+        .document-header__button:disabled {
+          opacity: 0.38;
+          cursor: not-allowed;
+        }
+
+        .document-body,
+        .summary-body {
           flex: 1;
-          overflow-y: auto;
-          padding: 0;
+          min-height: 0;
           position: relative;
-          background: #0d0d0f;
+          overflow: auto;
         }
 
-        .document-body::-webkit-scrollbar {
-          width: 6px;
+        .summary-body {
+          background: #f2f0eb;
         }
 
-        .document-body::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .document-body::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-        }
-
-        .document-body::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-
-        .content-info {
+        .viewer-loading,
+        .summary-state,
+        .document-fallback {
+          height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 100%;
-          padding: 2rem;
-        }
-
-        .info-card {
-          background: #1a1a1c;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 10px;
-          padding: 2rem;
+          gap: 14px;
+          padding: 32px;
           text-align: center;
-          max-width: 500px;
+          color: #6b6458;
         }
 
-        .info-card svg {
-          margin: 0 auto 1rem;
-          color: #32B8C6;
+        .summary-state--error {
+          color: #923d35;
         }
 
-        .info-card h3 {
-          font-size: 1.125rem;
-          color: #f5f5f5;
-          margin-bottom: 0.75rem;
+        .viewer-loading__spinner {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 3px solid rgba(34, 29, 20, 0.14);
+          border-top-color: #25211a;
+          animation: spin 0.8s linear infinite;
         }
 
-        .info-card p {
-          color: #71717a;
-          line-height: 1.6;
-          font-size: 0.875rem;
+        .summary-reader {
+          max-width: 980px;
+          margin: 0 auto;
+          padding: 28px 24px 40px;
+          color: #25211a;
+        }
+
+        .summary-divider {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          color: #8c8477;
+          font-size: 0.86rem;
+          margin-bottom: 18px;
+        }
+
+        .summary-divider::before,
+        .summary-divider::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: rgba(34, 29, 20, 0.18);
+        }
+
+        .summary-reader__body {
+          font-size: 1rem;
+          line-height: 1.9;
+        }
+
+        .summary-markdown__heading {
+          margin: 30px 0 12px;
+          font-size: 1.65rem;
+          line-height: 1.16;
+          color: #201b16;
+        }
+
+        .summary-markdown__heading:first-child {
+          margin-top: 8px;
+        }
+
+        .summary-markdown__paragraph {
+          margin: 0 0 16px;
+        }
+
+        .summary-markdown__list {
+          margin: 0;
+          padding-left: 24px;
+        }
+
+        .summary-markdown__item {
+          margin: 0 0 16px;
+          color: #2f2922;
+        }
+
+        .summary-reader__meta {
+          margin: 22px 0 0;
+          color: #867d70;
+          font-size: 0.82rem;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         @media (max-width: 768px) {
           .document-header {
-            padding: 0.875rem;
+            padding: 14px 16px;
+          }
+
+          .summary-reader {
+            padding: 20px 18px 30px;
+          }
+
+          .summary-markdown__heading {
+            font-size: 1.32rem;
           }
         }
       `}</style>

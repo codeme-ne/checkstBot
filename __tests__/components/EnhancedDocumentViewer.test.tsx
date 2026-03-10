@@ -50,7 +50,14 @@ describe('EnhancedDocumentViewer', () => {
   });
 
   it('renders the PDF viewer when the selected document is a PDF', () => {
-    render(<EnhancedDocumentViewer document={documentFixture} />);
+    render(
+      <EnhancedDocumentViewer
+        document={documentFixture}
+        viewerMode="document"
+        summaryState={{ status: 'idle' }}
+        pdfViewerState={{ pageNumber: 1, scale: 1, searchQuery: '', activeMatchIndex: -1 }}
+      />,
+    );
 
     expect(screen.getByTestId('mock-pdf-viewer')).toBeInTheDocument();
   });
@@ -69,7 +76,13 @@ describe('EnhancedDocumentViewer', () => {
     } as unknown as Selection);
 
     const { container } = render(
-      <EnhancedDocumentViewer document={documentFixture} onExplain={onExplain} />,
+      <EnhancedDocumentViewer
+        document={documentFixture}
+        viewerMode="document"
+        summaryState={{ status: 'idle' }}
+        pdfViewerState={{ pageNumber: 1, scale: 1, searchQuery: '', activeMatchIndex: -1 }}
+        onExplain={onExplain}
+      />,
     );
 
     const viewerBody = container.querySelector('.document-body') as HTMLDivElement;
@@ -87,5 +100,28 @@ describe('EnhancedDocumentViewer', () => {
 
     expect(onExplain).toHaveBeenCalledWith('gravity and motion');
     expect(removeAllRanges).toHaveBeenCalled();
+  });
+
+  it('renders the OTIO-style summary reader when summary mode is active', () => {
+    render(
+      <EnhancedDocumentViewer
+        document={{
+          ...documentFixture,
+          file: undefined,
+          content: '## Kernthema\n- Punkt eins\n- Punkt zwei',
+        }}
+        viewerMode="summary"
+        summaryState={{
+          status: 'ready',
+          markdown: '## Kernthema\n- Punkt eins\n- Punkt zwei',
+          generatedAt: '2026-03-10T08:00:00.000Z',
+        }}
+        pdfViewerState={{ pageNumber: 1, scale: 1, searchQuery: '', activeMatchIndex: -1 }}
+      />,
+    );
+
+    expect(screen.getByTestId('document-summary')).toBeInTheDocument();
+    expect(screen.getByText(/Original Summary/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kernthema/)).toBeInTheDocument();
   });
 });
